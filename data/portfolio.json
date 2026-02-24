@@ -1,0 +1,172 @@
+{
+  "products": [
+    {
+      "id": "P001",
+      "name": "Dell PowerEdge R750",
+      "category": "Servers",
+      "description": "Servidor rack 2U de alto rendimiento con procesadores Intel Xeon de 3ra generacion, hasta 3TB de RAM y soporte para cargas de trabajo criticas como bases de datos, virtualizacion y analytics.",
+      "use_cases": [
+        "virtualizacion de servidores legacy",
+        "consolidacion de infraestructura",
+        "bases de datos empresariales",
+        "workloads de alto rendimiento"
+      ],
+      "keywords": [
+        "servers",
+        "rack",
+        "virtualizacion",
+        "legacy",
+        "on-premise",
+        "consolidacion",
+        "infraestructura",
+        "datacenter",
+        "data center"
+      ],
+      "evidence_url": "https://www.dell.com/en-us/shop/dell-poweredge-servers/poweredge-r750-rack-server/spd/poweredge-r750/pe_r750_tm_vi_vp_sb",
+      "roi_pitch": "Reduce el costo total de propiedad (TCO) hasta un 30% al consolidar multiples servidores legacy en una sola plataforma de alto rendimiento.",
+      "pain_solved": "Elimina la dependencia de infraestructura obsoleta que genera altos costos de mantenimiento, tiempos de inactividad y cuellos de botella operativos."
+    },
+    {
+      "id": "P002",
+      "name": "Dell PowerStore 500",
+      "category": "Storage",
+      "description": "Sistema de almacenamiento all-flash inteligente con IA integrada para optimizacion automatica del rendimiento. Soporta NVMe, escala de forma no disruptiva y se integra con entornos multicloud e hibridos.",
+      "use_cases": [
+        "almacenamiento de datos criticos",
+        "migracion de storage legacy",
+        "entornos hibridos",
+        "respaldo y recuperacion de datos",
+        "bases de datos de alto rendimiento"
+      ],
+      "keywords": [
+        "storage",
+        "almacenamiento",
+        "flash",
+        "NVMe",
+        "datos",
+        "migracion",
+        "backup",
+        "hibrido",
+        "hybrid"
+      ],
+      "evidence_url": "https://www.dell.com/en-us/shop/dell-emc-powerstore/sf/power-store",
+      "roi_pitch": "Hasta 4x mejor rendimiento versus storage tradicional con reduccion de hasta 67% en espacio fisico y consumo energetico, logrando ROI positivo en menos de 12 meses.",
+      "pain_solved": "Resuelve la falta de capacidad, lentitud en acceso a datos y costos crecientes de mantenimiento de sistemas de almacenamiento obsoletos."
+    },
+    {
+      "id": "P003",
+      "name": "Dell APEX Cloud Services",
+      "category": "Cloud",
+      "description": "Plataforma de infraestructura como servicio (IaaS) que permite consumir recursos de compute, storage y red bajo un modelo de pago por uso. Compatible con AWS, Azure y Google Cloud para estrategias multicloud.",
+      "use_cases": [
+        "migracion a la nube",
+        "cloud migration",
+        "transformacion digital",
+        "expansion de capacidad bajo demanda",
+        "aplicaciones cloud-native",
+        "estrategia multicloud"
+      ],
+      "keywords": [
+        "cloud",
+        "nube",
+        "multicloud",
+        "migracion",
+        "migration",
+        "digital transformation",
+        "transformacion digital",
+        "AWS",
+        "Azure",
+        "IaaS",
+        "hybrid cloud"
+      ],
+      "evidence_url": "https://www.dell.com/en-us/dt/apex/index.htm",
+      "roi_pitch": "Modelo as-a-service que elimina inversiones de capital (CAPEX) y convierte la infraestructura en gasto operativo predecible (OPEX), con escalabilidad inmediata sin sobreaprovisionamiento.",
+      "pain_solved": "Elimina la rigidez de la infraestructura fija que impide escalar rapidamente ante picos de demanda o nuevas iniciativas digitales."
+    },
+    {
+      "id": "P004",
+      "name": "Dell PowerSwitch N-Series",
+      "category": "Networking",
+      "description": "Familia de switches de red empresariales con soporte para 1GbE, 10GbE y 25GbE. Diseno open networking con SmartFabric OS para automatizacion, ideal para centros de datos modernos y entornos campus.",
+      "use_cases": [
+        "modernizacion de red",
+        "network modernization",
+        "automatizacion de red",
+        "conectividad de datacenter",
+        "redes campus empresariales",
+        "segmentacion de red"
+      ],
+      "keywords": [
+        "network",
+        "networking",
+        "red",
+        "switch",
+        "conectividad",
+        "automatizacion",
+        "automation",
+        "data center",
+        "infraestructura de red"
+      ],
+      "evidence_url": "https://www.dell.com/en-us/dt/networking/switches/powerswitch-n-series.htm",
+      "roi_pitch": "Reduce el tiempo de configuracion de red hasta 90% mediante automatizacion SmartFabric, disminuyendo errores humanos y liberando al equipo de TI para tareas estrategicas.",
+      "pain_solved": "Soluciona redes lentas, complejas de administrar y con alta dependencia de configuracion manual que generan riesgos de seguridad y tiempos de respuesta lentos."
+    },
+    {
+      "id": "P005",
+      "name": "Dell Latitude 5540",
+      "category": "Client Solutions",
+      "description": "Laptop empresarial de 15.6 pulgadas con procesadores Intel Core de 13va generacion, certificaciones MIL-SPEC para durabilidad, opciones de conectividad 5G/LTE y gestion remota integrada con Dell ProManage.",
+      "use_cases": [
+        "fuerza de trabajo remota",
+        "trabajo hibrido",
+        "remote work",
+        "modernizacion de equipos de trabajo",
+        "productividad movil",
+        "usuarios de campo"
+      ],
+      "keywords": [
+        "laptops",
+        "endpoints",
+        "trabajo remoto",
+        "remote",
+        "hibrido",
+        "hybrid work",
+        "modernizacion",
+        "equipos",
+        "workforce"
+      ],
+      "evidence_url": "https://www.dell.com/en-us/shop/dell-laptops/latitude-5540-laptop/spd/latitude-15-5540-laptop",
+      "roi_pitch": "Flota de endpoints gestionable de forma centralizada con Dell ProManage, reduciendo hasta 25% los costos de soporte IT y extendiendo el ciclo de vida de los equipos.",
+      "pain_solved": "Reemplaza equipos obsoletos que generan alta tasa de incidentes de soporte, baja productividad en trabajo remoto y riesgos de seguridad por sistemas operativos sin soporte."
+    },
+    {
+      "id": "P006",
+      "name": "Dell PowerProtect Data Manager",
+      "category": "Data Protection",
+      "description": "Plataforma de proteccion de datos moderna con backup automatizado, recuperacion ante desastres (DR) y proteccion contra ransomware. Compatible con entornos virtuales (VMware, Hyper-V), Kubernetes y multicloud.",
+      "use_cases": [
+        "proteccion contra ransomware",
+        "recuperacion ante desastres",
+        "disaster recovery",
+        "backup empresarial",
+        "cumplimiento regulatorio",
+        "continuidad del negocio"
+      ],
+      "keywords": [
+        "backup",
+        "proteccion de datos",
+        "data protection",
+        "ransomware",
+        "recuperacion",
+        "recovery",
+        "disaster recovery",
+        "continuidad",
+        "regulatorio",
+        "compliance"
+      ],
+      "evidence_url": "https://www.dell.com/en-us/dt/data-protection/powerprotect-data-manager.htm",
+      "roi_pitch": "Reduce el tiempo de recuperacion ante incidentes (RTO) hasta 4x versus soluciones tradicionales, protegiendo la continuidad del negocio y evitando perdidas por tiempo de inactividad que promedian $5,600 USD por minuto en empresas enterprise.",
+      "pain_solved": "Elimina la vulnerabilidad ante ataques de ransomware y perdida de datos criticos, cumpliendo regulaciones de proteccion de datos como GDPR, HIPAA y PCI-DSS."
+    }
+  ]
+}
