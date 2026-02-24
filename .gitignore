@@ -1,0 +1,9 @@
+# Ignorar el entorno virtual
+venv/
+
+# Ignorar variables de entorno y secretos
+.env
+
+# Ignorar carpetas ocultas de Python
+__pycache__/
+.pytest_cache/
