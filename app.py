@@ -1,150 +1,94 @@
 import streamlit as st
-import sys
-import os
 
-sys.path.append(os.path.dirname(__file__))
+# 1. Configuración de la página (El layout 'wide' aprovecha toda la pantalla)
+st.set_page_config(page_title='KORHEX.AI | Dashboard', page_icon='🤖', layout='wide', initial_sidebar_state='expanded')
 
-st.set_page_config(
-    page_title="KORHEX.AI Account Intelligence",
-    page_icon="🤖",
-    layout="wide"
-)
+# 2. Inyección de CSS (La magia del diseño para imitar el mockup)
+st.markdown("""
+<style>
+    /* Ocultar elementos por defecto de Streamlit para un look más limpio */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Estilo para el botón principal en la barra lateral (Azul neón) */
+    .stButton > button {
+        width: 100%;
+        background-color: #0F62FE; 
+        color: white;
+        border-radius: 8px;
+        padding: 10px;
+        font-weight: bold;
+        border: none;
+    }
+    .stButton > button:hover {
+        background-color: #0353e9;
+        border-color: #0353e9;
+    }
+    
+    /* Estilo para las tarjetas de métricas (KPIs) */
+    div[data-testid="metric-container"] {
+        background-color: #1a1c23;
+        border: 1px solid #2e3039;
+        padding: 15px;
+        border-radius: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-if 'accounts_analyzed' not in st.session_state:
-    st.session_state['accounts_analyzed'] = []
-if 'web_data' not in st.session_state:
-    st.session_state['web_data'] = {}
+# 3. BARRA LATERAL (Sidebar - Input Area)
+with st.sidebar:
+    st.markdown("## 🤖 KORHEX.AI")
+    st.caption("ACCOUNT INTELLIGENCE")
+    st.markdown("---")
+    
+    st.caption("ANALYSIS PARAMETERS")
+    url_input = st.text_input("Company URL", placeholder="https://acme-corp.com")
+    name_input = st.text_input("Company Name", placeholder="Acme Corporation")
+    industry_input = st.selectbox("Industry", ["Technology", "Finance", "Healthcare", "Manufacturing"])
+    years_slider = st.slider("Years Since Last Purchase", 0, 10, 3)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Botón principal
+    if st.button("⚡ Execute AI Analysis"):
+        st.toast("Iniciando análisis de agentes...", icon="🤖")
+        
+    st.markdown("---")
+    st.caption("🔒 **Zero Data Leakage Protocol**\n\nAll analysis runs in an isolated sandbox. No data leaves your environment.")
 
-def main():
-    st.title("🤖 KORHEX.AI — Account Intelligence Platform")
-    st.caption("Local AI | Zero Data Leakage | Powered by Llama 3")
+# 4. ÁREA PRINCIPAL (Main Dashboard)
+st.title("Intelligence Dashboard ⚡")
 
-    with st.sidebar:
-        st.header("⚙️ Account Input")
+# Fila de Métricas (KPIs) usando st.columns
+col1, col2, col3 = st.columns(3)
 
-        company_url = st.text_input(
-            "🔗 Company URL *",
-            placeholder="https://www.example.com"
-        )
+with col1:
+    st.metric(label="AI LEAD SCORE", value="87", delta="+12.4% vs. industry avg")
+    
+with col2:
+    st.metric(label="ESTIMATED ROI", value="$2.4M", delta="+340% projected annual")
+    
+with col3:
+    st.metric(label="PROCESSING TIME SAVED", value="96hrs", delta="-28% vs. manual analysis", delta_color="inverse")
 
-        company_name = st.text_input(
-            "Company Name *",
-            placeholder="e.g. Toyota Motor Corp"
-        )
+st.markdown("---")
 
-        industry = st.selectbox(
-            "Industry",
-            ["Technology", "Finance", "Healthcare",
-             "Manufacturing", "Retail", "Energy",
-             "Telecommunications"]
-        )
+# Resumen Ejecutivo
+st.subheader("🧠 Executive Summary")
+st.info("""
+**Acme Corporation** is a mid-market SaaS enterprise headquartered in San Francisco, specializing in cloud-based supply chain optimization. The company has demonstrated **32% YoY revenue growth** and recently closed a Series C funding round of $85M.
 
-        years_inactive = st.slider(
-            "Years since last purchase",
-            0, 10, 3
-        )
+Key decision-makers include **Sarah Chen (CTO)** and **Michael Torres (VP of Engineering)**, both of whom have publicly discussed their need for enhanced data pipeline infrastructure. 
 
-        analyze_btn = st.button(
-            "🚀 Execute Analysis",
-            type="primary",
-            use_container_width=True
-        )
+Competitive analysis reveals Acme is evaluating alternatives to their current provider. Their contract renewal window opens in **Q3 2026**, creating a time-sensitive engagement window for our solutions team.
+""")
 
-        st.divider()
-
-        with st.expander("🛡️ Solution Viability"):
-            st.markdown("""
-**✅ No commercial AI licenses required**
-
-**✅ Open-source tools only**
-Ollama · Streamlit · Python · Tavily free tier
-
-**✅ Simulated/example accounts**
-No real client data stored or transmitted
-
-**✅ Full data confidentiality**
-100% local processing. Zero external data transmission.
-
----
-**Components:**
-- Sources: Tavily API (public web)
-- Processing: Llama 3 via Ollama (local)
-- Output: Streamlit UI (local network)
-
-**Minimum Requirements:**
-- GPU: 8GB VRAM
-- RAM: 16GB
-- Python 3.11 | Ollama | Streamlit
-            """)
-
-    if analyze_btn:
-        if not company_name or not company_url:
-            st.warning("⚠️ Please enter both Company Name and URL.")
-            return
-
-        try:
-            from modules.scraper import search_account, calculate_net_new_score
-            from modules.rag import get_relevant_products
-            from modules.agent import generate_analysis
-            from modules.ui_components import render_tabs
-        except ImportError as e:
-            st.error(f"Module missing: {e}")
-            st.info("Make sure all .py files are in the modules/ folder.")
-            return
-
-        prog = st.progress(0, text="🔍 Searching public information...")
-        web_data = search_account(company_name, company_url, industry)
-        st.session_state['web_data'] = web_data
-
-        prog.progress(33, text="💡 Matching portfolio solutions...")
-        products = get_relevant_products(industry, web_data)
-
-        prog.progress(66, text="🤖 Generating AI analysis and speech...")
-        analysis = generate_analysis(company_name, web_data, products, years_inactive)
-
-        prog.progress(100, text="✅ Analysis complete!")
-
-        score_data = calculate_net_new_score(years_inactive, web_data)
-        entry = {
-            "name": company_name,
-            "url": company_url,
-            "industry": industry,
-            "score": score_data['total_score'],
-            "priority": score_data['priority'],
-            "years_inactive": years_inactive,
-            "is_net_new": score_data['is_net_new']
-        }
-
-        st.session_state['accounts_analyzed'] = [
-            a for a in st.session_state['accounts_analyzed']
-            if a['name'] != company_name
-        ]
-        st.session_state['accounts_analyzed'].append(entry)
-        st.session_state['accounts_analyzed'].sort(
-            key=lambda x: x['score'], reverse=True
-        )
-        st.session_state['accounts_analyzed'] = \
-            st.session_state['accounts_analyzed'][:5]
-
-        render_tabs(company_name, analysis, products, years_inactive, web_data)
-
-    else:
-        st.info("👈 Enter a company URL and name in the sidebar to begin.")
-
-        if st.session_state['accounts_analyzed']:
-            st.header("🏆 Top 5 Priority Accounts")
-            medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
-            for i, acc in enumerate(st.session_state['accounts_analyzed']):
-                badge = "🏷️ NET NEW" if acc['is_net_new'] else "🔄 RE-ENGAGEMENT"
-                col1, col2, col3 = st.columns([4, 1, 1])
-                with col1:
-                    st.markdown(f"{medals[i]} **{acc['name']}** — {badge}")
-                    st.caption(f"{acc['url']} | {acc['industry']}")
-                with col2:
-                    st.metric("Score", f"{acc['score']}/100")
-                with col3:
-                    st.caption(acc['priority'])
-                st.divider()
-
-if __name__ == "__main__":
-    main()
+# Noticias Recientes (Usando st.expander)
+with st.expander("📰 Recent News (4 items)", expanded=True):
+    st.markdown("""
+    * 🟢 **Acme Corp Closes $85M Series C Led by Sequoia Capital** - *TechCrunch (Feb 12, 2026)*
+    * 🟢 **Acme Expands Engineering Team by 40% in Q1** - *LinkedIn (Jan 28, 2026)*
+    * 🔴 **Supply Chain Disruptions Impact Acme's Client Retention** - *Bloomberg (Jan 15, 2026)*
+    * 🟢 **Acme Announces Partnership with AWS for Cloud Migration** - *PR Newswire (Dec 20, 2025)*
+    """)
