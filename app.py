@@ -1,94 +1,103 @@
 import streamlit as st
+from dotenv import load_dotenv
 
-# 1. Configuración de la página (El layout 'wide' aprovecha toda la pantalla)
-st.set_page_config(page_title='KORHEX.AI | Dashboard', page_icon='🤖', layout='wide', initial_sidebar_state='expanded')
+# 1. LECTURA DE LLAVES DE SEGURIDAD
+# Esto obliga al sistema a leer tu archivo .env antes de arrancar cualquier otra cosa
+load_dotenv()
 
-# 2. Inyección de CSS (La magia del diseño para imitar el mockup)
-st.markdown("""
-<style>
-    /* Ocultar elementos por defecto de Streamlit para un look más limpio */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Estilo para el botón principal en la barra lateral (Azul neón) */
-    .stButton > button {
-        width: 100%;
-        background-color: #0F62FE; 
-        color: white;
-        border-radius: 8px;
-        padding: 10px;
-        font-weight: bold;
-        border: none;
-    }
-    .stButton > button:hover {
-        background-color: #0353e9;
-        border-color: #0353e9;
-    }
-    
-    /* Estilo para las tarjetas de métricas (KPIs) */
-    div[data-testid="metric-container"] {
-        background-color: #1a1c23;
-        border: 1px solid #2e3039;
-        padding: 15px;
-        border-radius: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
+from modules.database import initialize_database
 
-# 3. BARRA LATERAL (Sidebar - Input Area)
+# 2. Arrancamos la memoria de la base de datos local
+initialize_database()
+
+st.set_page_config(page_title='KORHEX.AI', page_icon='🤖', layout='wide')
+
+if 'current_analysis' not in st.session_state:
+    st.session_state['current_analysis'] = None
+
+st.title('KORHEX.AI Account Intelligence Platform')
+st.caption('Local AI | Zero Data Leakage | Dual-Agent | SQLite Memory')
+
 with st.sidebar:
-    st.markdown("## 🤖 KORHEX.AI")
-    st.caption("ACCOUNT INTELLIGENCE")
-    st.markdown("---")
+    st.header('Account Input')
+    company_url = st.text_input('Company URL', placeholder='https://example.com')
+    company_name = st.text_input('Company Name', placeholder='e.g. Toyota')
+    industry = st.selectbox('Industry', ['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Energy', 'Telecommunications'])
+    years_inactive = st.slider('Years since last purchase', 0, 10, 3)
+    analyze_btn = st.button('Execute Analysis', type='primary', use_container_width=True)
     
-    st.caption("ANALYSIS PARAMETERS")
-    url_input = st.text_input("Company URL", placeholder="https://acme-corp.com")
-    name_input = st.text_input("Company Name", placeholder="Acme Corporation")
-    industry_input = st.selectbox("Industry", ["Technology", "Finance", "Healthcare", "Manufacturing"])
-    years_slider = st.slider("Years Since Last Purchase", 0, 10, 3)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Botón principal
-    if st.button("⚡ Execute AI Analysis"):
-        st.toast("Iniciando análisis de agentes...", icon="🤖")
+    st.divider()
+    with st.expander('Solution Viability'):
+        st.markdown('''
+        * No commercial AI licenses required
+        * Open-source tools only (Ollama, CrewAI, Streamlit, SQLite)
+        * Simulated/example accounts = no real client data
+        * Full data confidentiality = 0 bytes to cloud
+        ''')
+
+if analyze_btn:
+    if not company_name or not company_url:
+        st.warning('Please enter both Company Name and URL.')
+    else:
+        from modules.scraper import search_account, calculate_net_new_score
+        from modules.rag import get_relevant_products
+        from modules.agents import run_dual_agent_analysis
+        from modules.audit_logger import AuditLogger
+        from modules.database import (
+            get_cached_account, save_account_cache, 
+            get_cached_analysis, save_analysis, save_lead_score
+        )
+
+        prog = st.progress(0, text='Checking local cache...')
         
-    st.markdown("---")
-    st.caption("🔒 **Zero Data Leakage Protocol**\n\nAll analysis runs in an isolated sandbox. No data leaves your environment.")
-
-# 4. ÁREA PRINCIPAL (Main Dashboard)
-st.title("Intelligence Dashboard ⚡")
-
-# Fila de Métricas (KPIs) usando st.columns
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(label="AI LEAD SCORE", value="87", delta="+12.4% vs. industry avg")
-    
-with col2:
-    st.metric(label="ESTIMATED ROI", value="$2.4M", delta="+340% projected annual")
-    
-with col3:
-    st.metric(label="PROCESSING TIME SAVED", value="96hrs", delta="-28% vs. manual analysis", delta_color="inverse")
-
-st.markdown("---")
-
-# Resumen Ejecutivo
-st.subheader("🧠 Executive Summary")
-st.info("""
-**Acme Corporation** is a mid-market SaaS enterprise headquartered in San Francisco, specializing in cloud-based supply chain optimization. The company has demonstrated **32% YoY revenue growth** and recently closed a Series C funding round of $85M.
-
-Key decision-makers include **Sarah Chen (CTO)** and **Michael Torres (VP of Engineering)**, both of whom have publicly discussed their need for enhanced data pipeline infrastructure. 
-
-Competitive analysis reveals Acme is evaluating alternatives to their current provider. Their contract renewal window opens in **Q3 2026**, creating a time-sensitive engagement window for our solutions team.
-""")
-
-# Noticias Recientes (Usando st.expander)
-with st.expander("📰 Recent News (4 items)", expanded=True):
-    st.markdown("""
-    * 🟢 **Acme Corp Closes $85M Series C Led by Sequoia Capital** - *TechCrunch (Feb 12, 2026)*
-    * 🟢 **Acme Expands Engineering Team by 40% in Q1** - *LinkedIn (Jan 28, 2026)*
-    * 🔴 **Supply Chain Disruptions Impact Acme's Client Retention** - *Bloomberg (Jan 15, 2026)*
-    * 🟢 **Acme Announces Partnership with AWS for Cloud Migration** - *PR Newswire (Dec 20, 2025)*
-    """)
+        # 3. Buscamos en la memoria (Base de Datos)
+        web_data = get_cached_account(company_name, company_url)
+        if web_data:
+            st.toast('Loaded from local cache!', icon='⚡')
+        else:
+            # Si no está, mandamos al Scraper de Tavily
+            prog.progress(20, text='Searching public information...')
+            with AuditLogger('SCRAPE', company_name) as log:
+                web_data = search_account(company_name, company_url, industry)
+                log.set_tokens(500)
+            save_account_cache(company_name, company_url, industry, web_data)
+            
+        prog.progress(40, text='Matching portfolio solutions...')
+        products = get_relevant_products(industry, web_data)
+        
+        # 4. Verificamos si la IA ya hizo este análisis antes
+        cached = get_cached_analysis(company_name, company_url, years_inactive)
+        if cached:
+            analysis = cached
+            st.toast('Analysis loaded from memory!', icon='🧠')
+        else:
+            # Si no, ponemos a trabajar a la tarjeta gráfica local
+            prog.progress(60, text='Running Dual-Agent Analysis...')
+            with AuditLogger('DUAL_AGENT', company_name) as log:
+                analysis = run_dual_agent_analysis(company_name, web_data, products, years_inactive)
+                log.set_tokens(analysis.get('estimated_tokens', 1500))
+            
+            save_analysis(
+                company_name, company_url, years_inactive, 
+                analysis['research_analysis'], analysis['sales_speech'], 
+                analysis['word_count'], analysis['audit_passed'], analysis['audit_notes']
+            )
+            
+        prog.progress(90, text='Saving to local database...')
+        score = calculate_net_new_score(years_inactive, web_data)
+        save_lead_score(
+            company_name, company_url, industry, 
+            score['total_score'], score['priority'], years_inactive, score['is_net_new']
+        )
+        
+        # Guardamos el resultado en la sesión
+        st.session_state['current_analysis'] = {
+            'company_name': company_name, 'web_data': web_data,
+            'analysis': analysis, 'products': products,
+            'score': score, 'years_inactive': years_inactive
+        }
+        
+        prog.progress(100, text='Complete!')
+        st.success('Analysis complete. Go to the tabs above.')
+else:
+    st.info('Enter a company URL and name in the sidebar to begin.')
