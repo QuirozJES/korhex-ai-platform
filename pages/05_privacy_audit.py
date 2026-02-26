@@ -1,7 +1,7 @@
 """
 05_privacy_audit.py — Privacy & Cost Audit Log
-El arma secreta para el jurado: demuestra en tiempo real que 0 bytes salieron del servidor.
-Propietario: Ingeniero 5 (UI)
+The secret weapon for the jury: demonstrate in real time that 0 bytes ever left the server.
+Owner: Engineer 5 (UI)
 """
 import streamlit as st
 from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
@@ -9,13 +9,13 @@ from modules.ui_theme import page_header, badge, no_data_state, get_analysis, pa
 try:
     from modules.ui_theme import page_header, badge, no_data_state, apply_theme
 except ImportError:
-    st.error("⚠️ modules/ui_theme.py no encontrado.")
+    st.error("⚠️ modules/ui_theme.py not found.")
     st.stop()
 
 import pandas as pd
 try:
     from modules.audit_logger import get_privacy_dashboard_data
-    from modules.database import get_connection
+    from modules.database import get_connection, purge_company_data
     HAS_DB = True
 except ImportError:
     HAS_DB = False
@@ -24,30 +24,30 @@ st.set_page_config(page_title="Privacy Audit · KORHEX.AI", page_icon="🔒", la
 
 page_header(
     title="🔒 Privacy & Cost Audit Log",
-    subtitle="Prueba irrefutable en tiempo real: 0 bytes de datos del cliente enviados a la nube."
+    subtitle="Irrefutable, real-time evidence: 0 bytes of customer data sent to the cloud."
 )
 
-# ── Cargar datos del audit ────────────────────────────────────────────────────
+# ── Load audit data ───────────────────────────────────────────────────────────
 if HAS_DB:
     try:
         data = get_privacy_dashboard_data()
     except Exception as e:
-        st.warning(f"No se pudo cargar el audit log: {e}")
+        st.warning(f"Audit log could not be loaded: {e}")
         data = {}
 else:
-    st.warning("⚠️ modules/audit_logger.py o database.py no disponibles — mostrando datos de demostración.")
+    st.warning("⚠️ modules/audit_logger.py or database.py not available — displaying demo data.")
     data = {
         "total_analyses": 0, "total_tokens_local": 0,
         "cost_saved_usd": 0.0, "bytes_to_cloud": 0,
         "cloud_api_calls": 0, "privacy_score": 100, "first_use": "N/A"
     }
 
-# ── Hero: El número que gana al jurado ────────────────────────────────────────
+# ── Hero: the number that wins the jury ───────────────────────────────────────
 st.markdown("""
 <div style="text-align:center;padding:2rem 0 1rem 0;">
     <div style="color:#6B7280;font-family:'Share Tech Mono',monospace;font-size:0.75rem;
                 letter-spacing:0.3em;text-transform:uppercase;margin-bottom:0.5rem;">
-        Bytes de datos del cliente enviados a APIs de nube
+        Customer data bytes sent to cloud APIs
     </div>
     <div class="kx-audit-zero">0</div>
     <div style="color:#00FFB2;font-family:'Share Tech Mono',monospace;font-size:0.8rem;
@@ -57,61 +57,61 @@ st.markdown("""
 
 st.markdown("---")
 
-# ── KPIs del audit ────────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ KPIs de Privacidad</div>', unsafe_allow_html=True)
+# ── Audit KPIs ────────────────────────────────────────────────────────────────
+st.markdown('<div class="kx-section-title">◈ Privacy KPIs</div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.metric(
-        "Análisis Ejecutados",
+        "Analyses Executed",
         data.get("total_analyses", 0),
-        help="Total de empresas procesadas localmente"
+        help="Total number of companies processed locally"
     )
 with c2:
     tokens = data.get("total_tokens_local", 0)
     st.metric(
-        "Tokens Procesados Localmente",
+        "Tokens Processed Locally",
         f"{tokens:,}",
-        help="100% procesados en GPU local con Llama 3"
+        help="100% processed on local GPU with Llama 3"
     )
 with c3:
     cost = data.get("cost_saved_usd", 0.0)
     st.metric(
-        "Costo Equivalente Ahorrado",
+        "Equivalent Cloud Cost Avoided",
         f"${cost:.4f}",
         delta="vs GPT-4 pricing ($0.03/1K tokens)",
-        help="Lo que hubiera costado en la nube"
+        help="What the workload would have cost in the cloud"
     )
 with c4:
     st.metric(
         "Privacy Score",
         f"{data.get('privacy_score', 100)}%",
-        delta="Máximo posible",
+        delta="Maximum achievable",
         delta_color="off",
-        help="100% = ningún dato sensible a la nube"
+        help="100% = no sensitive data sent to the cloud"
     )
 
 st.markdown("---")
 
-# ── Tabla de arquitectura de privacidad ───────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Prueba de Arquitectura — Zero Data Leakage</div>', unsafe_allow_html=True)
+# ── Privacy architecture table ────────────────────────────────────────────────
+st.markdown('<div class="kx-section-title">◈ Architecture Proof — Zero Data Leakage</div>', unsafe_allow_html=True)
 
 ARCH_ROWS = [
-    ("Llama 3 LLM",           "GPU Local (RTX 5080)",     "NUNCA",       "green"),
-    ("SQLite Database",       "Disco Local",               "NUNCA",       "green"),
-    ("Streamlit UI",          "Red Local (localhost)",     "NUNCA",       "green"),
-    ("CrewAI Dual-Agent",     "RAM Local",                 "NUNCA",       "green"),
-    ("Datos del Cliente",     "Memoria Local",             "NUNCA",       "green"),
-    ("Tavily Web Search",     "API Pública",               "Solo URLs",   "yellow"),
+    ("Llama 3 LLM",           "Local GPU (RTX 5080)",     "NEVER",       "green"),
+    ("SQLite Database",       "Local Disk",               "NEVER",       "green"),
+    ("Streamlit UI",          "Local Network (localhost)","NEVER",       "green"),
+    ("CrewAI Dual-Agent",     "Local RAM",                "NEVER",       "green"),
+    ("Customer Data",         "Local Memory",             "NEVER",       "green"),
+    ("Tavily Web Search",     "Public API",               "Only URLs",   "yellow"),
 ]
 
 arch_data = [(c, l, cl) for c, l, cl, _ in ARCH_ROWS]
-arch_df = pd.DataFrame(arch_data, columns=["Componente", "Ubicación", "¿A la Nube?"])
+arch_df = pd.DataFrame(arch_data, columns=["Component", "Location", "Cloud Exposure?"])
 st.dataframe(arch_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 
 # ── Event Log ─────────────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Event Log de Operaciones de IA</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ AI Operations Event Log</div>', unsafe_allow_html=True)
 
 if HAS_DB:
     try:
@@ -127,25 +127,27 @@ if HAS_DB:
             df["cloud_cost_usd"] = df["cloud_cost_usd"].apply(lambda x: f"${x:.6f}")
             df["processing_ms"]  = df["processing_ms"].apply(lambda x: f"{x}ms")
             df["bytes_to_cloud"] = "0"
-            df.columns = ["Timestamp","Evento","Empresa","Tokens","Costo Ahorrado","Tiempo","Bytes → Nube"]
+            df.columns = ["Timestamp","Event","Company","Tokens","Cost Avoided","Duration","Bytes → Cloud"]
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             no_data_state(
-                msg="No hay eventos registrados aún.",
-                hint="Ejecuta un análisis para comenzar a poblar el audit log."
+                msg="No events have been recorded yet.",
+                hint="Execute an analysis to start populating the audit log."
             )
     except Exception as e:
-        st.warning(f"Error cargando event log: {e}")
+        st.warning(f"Error loading event log: {e}")
 else:
     no_data_state(
-        msg="Base de datos no disponible.",
-        hint="Verifica que database.py y audit_logger.py estén correctamente instalados."
+        msg="Database not available.",
+        hint="Verify that database.py and audit_logger.py are correctly installed."
     )
 
 st.markdown("---")
 
-# ── Comparación ROI ────────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Comparación de Costos — KORHEX.AI vs Competencia</div>', unsafe_allow_html=True)
+st.markdown("---")
+
+# ── ROI comparison ─────────────────────────────────────────────────────────────
+st.markdown('<div class="kx-section-title">◈ Cost Comparison — KORHEX.AI vs Competitors</div>', unsafe_allow_html=True)
 
 analyses = max(data.get("total_analyses", 1), 1)
 tokens   = max(data.get("total_tokens_local", 1500), 1500)
@@ -155,9 +157,9 @@ claude_cost = round(tokens * 0.000015, 4)
 korhex_cost = 0.0
 
 comparison = [
-    ("🏆 KORHEX.AI",             "Ollama + Llama 3 Local", f"${korhex_cost:.2f}",   "green"),
-    ("Competidor A (GPT-4)",     "OpenAI API",             f"${gpt4_cost:.4f}",     "red"),
-    ("Competidor B (Claude API)","Anthropic API",          f"${claude_cost:.4f}",   "yellow"),
+    ("🏆 KORHEX.AI",               "Ollama + Llama 3 Local", f"${korhex_cost:.2f}",   "green"),
+    ("Competitor A (GPT-4)",      "OpenAI API",             f"${gpt4_cost:.4f}",     "red"),
+    ("Competitor B (Claude API)", "Anthropic API",          f"${claude_cost:.4f}",   "yellow"),
 ]
 
 cols = st.columns(3)
@@ -173,22 +175,65 @@ for i, (name, tech, cost, color) in enumerate(comparison):
                         color:{'#00FFB2' if is_winner else '#FF3B5C' if color=='red' else '#FFD600'};
                         font-family:'Share Tech Mono',monospace;">{cost}</div>
             <div style="font-size:0.65rem;color:#6B7280;margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.1em;">
-                por {tokens:,} tokens
+                for {tokens:,} tokens
             </div>
-            {('<br><span class="kx-badge badge-green">GANADOR</span>' if is_winner else '')}
+            {('<br><span class="kx-badge badge-green">WINNER</span>' if is_winner else '')}
         </div>
         """, unsafe_allow_html=True)
 
 st.markdown(f"""
 <div style="text-align:center;margin-top:1rem;color:#6B7280;
             font-family:'Share Tech Mono',monospace;font-size:0.75rem;">
-    Cálculo basado en {tokens:,} tokens procesados &nbsp;|&nbsp;
+    Calculation based on {tokens:,} tokens processed &nbsp;|&nbsp;
     GPT-4: $0.03/1K tokens &nbsp;|&nbsp;
     KORHEX.AI: $0.00/1K tokens
 </div>
 """, unsafe_allow_html=True)
 
 st.markdown("---")
+
+# ── Danger Zone: Data Purge / Ghost Protocol ───────────────────────────────────
+with st.expander("⚠️ Danger Zone: Data Purge Protocol"):
+    if not HAS_DB:
+        st.warning("Database not available. The purge protocol cannot be executed.")
+    else:
+        st.markdown(
+            """
+            <div style="color:#F97373;font-size:0.8rem;font-family:'Share Tech Mono',monospace;">
+                This action executes the <b>Right to Be Forgotten</b> (GDPR) protocol and 
+                deletes all local data associated with a specific company.
+                <br><br>
+                • Rows in <code>account_cache</code> and <code>lead_scores</code> are deleted.<br>
+                • The <code>audit_log</code> is retained but the company name is stored as <b>REDACTED</b>.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        company_to_purge = st.text_input(
+            "Exact company name to purge",
+            placeholder="e.g. Toyota",
+        )
+
+        purge_clicked = st.button(
+            "🔥 PURGE CLIENT DATA",
+            type="primary",
+            use_container_width=True,
+        )
+
+        if purge_clicked:
+            target = company_to_purge.strip()
+            if not target:
+                st.warning("Enter the exact company name you want to purge.")
+            else:
+                try:
+                    purge_company_data(target)
+                    st.success(
+                        "Ghost Protocol Executed: All local data for this account has been permanently erased."
+                    )
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error executing data purge: {e}")
 
 # ── Footer de privacidad ───────────────────────────────────────────────────────
 first_use = data.get("first_use", "N/A")

@@ -1,14 +1,14 @@
 import streamlit as st
 from dotenv import load_dotenv
 
-# 1. LECTURA DE LLAVES DE SEGURIDAD
-# Esto obliga al sistema a leer tu archivo .env antes de arrancar cualquier otra cosa
+# 1. SECURITY KEY LOADING
+# This forces the system to read your .env file before initializing anything else
 load_dotenv()
 
 from modules.database import initialize_database
 from modules.ui_theme import page_header
 
-# 2. Arrancamos la memoria de la base de datos local
+# 2. Initialize the local database memory
 initialize_database()
 
 st.set_page_config(page_title='KORHEX.AI', page_icon='🤖', layout='wide')
@@ -79,12 +79,12 @@ if analyze_btn:
 
         prog = st.progress(0, text='Checking local cache...')
         
-        # 3. Buscamos en la memoria (Base de Datos)
+        # 3. Look up the account in local database memory
         web_data = get_cached_account(company_name, company_url)
         if web_data:
             st.toast('Loaded from local cache!', icon='⚡')
         else:
-            # Si no está, mandamos al Scraper de Tavily
+            # If not found, trigger the Tavily web scraper
             prog.progress(20, text='Searching public information...')
             with AuditLogger('SCRAPE', company_name) as log:
                 web_data = search_account(company_name, company_url, industry)
@@ -94,13 +94,13 @@ if analyze_btn:
         prog.progress(40, text='Matching portfolio solutions...')
         products = get_relevant_products(industry, web_data)
         
-        # 4. Verificamos si la IA ya hizo este análisis antes
+        # 4. Check if AI has already completed this analysis before
         cached = get_cached_analysis(company_name, company_url, years_inactive)
         if cached:
             analysis = cached
             st.toast('Analysis loaded from memory!', icon='🧠')
         else:
-            # Si no, ponemos a trabajar a la tarjeta gráfica local
+            # If not, execute the dual‑agent workflow on the local GPU
             prog.progress(60, text='Running Dual-Agent Analysis...')
             with AuditLogger('DUAL_AGENT', company_name) as log:
                 analysis = run_dual_agent_analysis(company_name, web_data, products, years_inactive)
@@ -119,7 +119,7 @@ if analyze_btn:
             score['total_score'], score['priority'], years_inactive, score['is_net_new']
         )
         
-        # Guardamos el resultado en la sesión
+        # Persist the consolidated result into the current session
         st.session_state['current_analysis'] = {
             'company_url':    company_url,
             'industry':       industry,

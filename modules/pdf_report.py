@@ -1,7 +1,7 @@
 """
-pdf_report.py — Reporte Ejecutivo KORHEX.AI
-Estilo: B2B profesional apto para C-Level
-Uso: pdf_bytes = generate_report(st.session_state['current_analysis'])
+pdf_report.py — KORHEX.AI Executive Report
+Style: C‑level ready, professional B2B narrative
+Usage: pdf_bytes = generate_report(st.session_state['current_analysis'])
 """
 import io
 from datetime import datetime
@@ -16,7 +16,7 @@ from reportlab.platypus import (
     Table, TableStyle, HRFlowable, PageBreak, KeepTogether
 )
 
-# Paleta monocromatica ejecutiva
+# Executive monochrome palette
 C_BLACK  = colors.HexColor("#111111")
 C_DARK   = colors.HexColor("#333333")
 C_MID    = colors.HexColor("#666666")
@@ -28,7 +28,7 @@ MARGIN   = 0.65 * inch
 
 
 def _st():
-    """Estilos tipograficos del reporte."""
+    """Typography styles used across the report."""
     return {
         "brand": ParagraphStyle("brand",
             fontName="Helvetica-Bold", fontSize=7,
@@ -82,15 +82,15 @@ def _st():
 
 
 def _page(canvas, doc):
-    """Dibuja header y footer en cada pagina."""
+    """Draw header and footer on every page."""
     canvas.saveState()
     w, h = letter
 
-    # Linea header
+    # Header rule
     canvas.setStrokeColor(C_RULE)
     canvas.setLineWidth(0.5)
     canvas.line(MARGIN, h - 0.44*inch, w - MARGIN, h - 0.44*inch)
-    # Texto header
+    # Header text
     canvas.setFillColor(C_BLACK)
     canvas.setFont("Helvetica-Bold", 8)
     canvas.drawString(MARGIN, h - 0.37*inch, "KORHEX.AI")
@@ -100,7 +100,7 @@ def _page(canvas, doc):
     canvas.drawRightString(w - MARGIN, h - 0.37*inch,
         datetime.now().strftime("%B %d, %Y"))
 
-    # Linea footer
+    # Footer rule
     canvas.line(MARGIN, 0.44*inch, w - MARGIN, 0.44*inch)
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(C_LIGHT)
@@ -113,7 +113,7 @@ def _page(canvas, doc):
 
 
 def _txt(text):
-    """Limpiar texto para ReportLab."""
+    """Normalize and escape text for ReportLab."""
     return (text or "") \
         .replace("&", "&amp;") \
         .replace("<", "&lt;") \
@@ -128,8 +128,8 @@ def _rule(after=8):
 
 def generate_report(analysis_data: dict) -> bytes:
     """
-    Genera PDF ejecutivo de 3 paginas y retorna bytes.
-    Uso: st.download_button(data=generate_report(current_analysis))
+    Generate a three‑page executive PDF and return it as raw bytes.
+    Usage: st.download_button(data=generate_report(current_analysis))
     """
     buf = io.BytesIO()
     s   = _st()
@@ -142,7 +142,7 @@ def generate_report(analysis_data: dict) -> bytes:
         author="KORHEX.AI",
     )
 
-    # ── Datos defensivos ──────────────────────────────────────────────────────
+    # ── Defensive data extraction ────────────────────────────────────────────
     company     = analysis_data.get("company_name") or "N/A"
     industry    = (analysis_data.get("industry") or
                    analysis_data.get("web_data", {}).get("industry") or "N/A")
@@ -163,7 +163,7 @@ def generate_report(analysis_data: dict) -> bytes:
     story = []
 
     # =========================================================================
-    # P1 — PORTADA
+    # P1 — COVER
     # =========================================================================
     story += [
         Spacer(1, 0.5*inch),
@@ -185,7 +185,7 @@ def generate_report(analysis_data: dict) -> bytes:
              Paragraph("AI AUDIT",    s["kpi_lbl"])],
             [Paragraph(f"{total_score}/100",                    s["kpi_val"]),
              Paragraph(str(priority),                           s["kpi_val"]),
-             Paragraph("Net New Logo" if is_net_new else "Reactivacion", s["kpi_val"]),
+             Paragraph("Net New Logo" if is_net_new else "Reactivation", s["kpi_val"]),
              Paragraph("Verified" if audit_ok else "Review",   s["kpi_val"])],
             [Paragraph("out of 100",              s["kpi_sub"]),
              Paragraph("sales priority",           s["kpi_sub"]),
@@ -207,7 +207,7 @@ def generate_report(analysis_data: dict) -> bytes:
     ]))
     story.append(t_kpi)
 
-    # Productos recomendados
+    # Recommended solutions
     if products:
         story += [Paragraph("RECOMMENDED SOLUTIONS", s["sec_label"]), _rule()]
         rows = [[Paragraph("SOLUTION", s["th"]), Paragraph("ROI PITCH", s["th"])]]
@@ -235,7 +235,7 @@ def generate_report(analysis_data: dict) -> bytes:
     story.append(PageBreak())
 
     # =========================================================================
-    # P2 — ANALISIS DE 6 ELEMENTOS
+    # P2 — 6‑ELEMENT ACCOUNT ANALYSIS
     # =========================================================================
     story += [
         Paragraph("ACCOUNT ANALYSIS", s["brand"]),
