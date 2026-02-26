@@ -80,7 +80,7 @@ if analyze_btn:
         prog = st.progress(0, text='Checking local cache...')
         
         # 3. Buscamos en la memoria (Base de Datos)
-        web_data = get_cached_account(company_name, company_url)
+        web_data = get_cached_account(company_name, company_url, industry)
         if web_data:
             st.toast('Loaded from local cache!', icon='⚡')
         else:
@@ -95,19 +95,19 @@ if analyze_btn:
         products = get_relevant_products(industry, web_data)
         
         # 4. Verificamos si la IA ya hizo este análisis antes
-        cached = get_cached_analysis(company_name, company_url, years_inactive)
+        cached = get_cached_analysis(company_name, company_url, industry, years_inactive)
         if cached:
             analysis = cached
             st.toast('Analysis loaded from memory!', icon='🧠')
         else:
-            # Si no, ponemos a trabajar a la tarjeta gráfica local
+            # Ponemos a trabajar a la tarjeta gráfica local
             prog.progress(60, text='Running Dual-Agent Analysis...')
             with AuditLogger('DUAL_AGENT', company_name) as log:
                 analysis = run_dual_agent_analysis(company_name, web_data, products, years_inactive)
                 log.set_tokens(analysis.get('estimated_tokens', 1500))
             
             save_analysis(
-                company_name, company_url, years_inactive, 
+                company_name, company_url, industry, years_inactive, 
                 analysis['research_analysis'], analysis['sales_speech'], 
                 analysis['word_count'], analysis['audit_passed'], analysis['audit_notes']
             )

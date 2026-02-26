@@ -1,4 +1,11 @@
 import time, os, requests
+import re
+
+def clean_text(text: str) -> str:
+    # Elimina caracteres que Streamlit no puede renderizar
+    text = text.encode('utf-8', 'ignore').decode('utf-8')
+    text = re.sub(r'[^\x00-\x7F\u00C0-\u024F\u00A0-\u00FF\n\r\t ]', '', text)
+    return text.strip()
 
 def run_dual_agent_analysis(company_name, web_data, products, years_inactive):
 
@@ -46,14 +53,27 @@ KEYWORDS TECNOLÓGICOS: {tech_keywords}
 SOLUCIONES DELL RECOMENDADAS:
 {product_context}
 
-Genera un análisis con estas secciones:
-1. SITUACIÓN ACTUAL
-2. PAIN POINTS CRÍTICOS
-3. OPORTUNIDAD COMERCIAL
-4. PRODUCTOS RECOMENDADOS
-5. SEÑALES DE COMPRA
+IMPORTANTE: Responde EXACTAMENTE con este formato y estos encabezados:
 
-Sé específico con datos reales de la empresa. Mínimo 200 palabras."""
+## 1. COMPANY SNAPSHOT & STRATEGY
+[Escribe aquí el análisis de situación actual y estrategia de la empresa]
+
+## 2. TECHNOLOGY ENVIRONMENT
+[Escribe aquí el análisis del entorno tecnológico detectado]
+
+## 3. IT PAIN POINTS
+[Escribe aquí los pain points críticos identificados]
+
+## 4. KEY DECISION MAKERS
+[Escribe aquí los tomadores de decisión identificados]
+
+## 5. FINANCIAL SIGNALS
+[Escribe aquí las señales financieras relevantes]
+
+## 6. COMPETITIVE CONTEXT
+[Escribe aquí el contexto competitivo de la empresa]
+
+Sé específico con datos reales de la empresa. Mínimo 30 palabras por sección."""
 
     # ── Prompt Agente Vendedor ───────────────────────────
     sales_prompt = f"""Eres un ejecutivo de ventas senior de Dell Technologies con 15 años de experiencia.
@@ -119,8 +139,8 @@ Escribe el discurso ahora:"""
     )
 
     return {
-        'research_analysis': research_analysis,
-        'sales_speech':      sales_speech,
+        'research_analysis': clean_text(research_analysis),
+        'sales_speech':      clean_text(sales_speech),
         'word_count':        word_count,
         'audit_passed':      audit_passed,
         'audit_notes':       audit_notes,
