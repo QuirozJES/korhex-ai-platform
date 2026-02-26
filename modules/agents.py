@@ -1,18 +1,128 @@
-import time
+import time, os, requests
 
 def run_dual_agent_analysis(company_name, web_data, products, years_inactive):
-    """
-    Versión de contingencia (Mock) mientras el Inge 4 sube su código real de CrewAI.
-    Simula el trabajo del Agente Vendedor y el Agente Auditor.
-    """
-    # Simulamos que tu tarjeta gráfica está "pensando" por 3 segundos
-    time.sleep(3) 
-    
+
+    # ── Preparar contexto con datos reales ──────────────
+    product_context = "\n".join([
+        f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']} | Pain: {p['pain_solved']}"
+        for p in products
+    ]) if products else "No hay productos específicos identificados."
+
+    tech_snippets = " ".join([
+        item['snippet'] for item in web_data.get('tech_environment', [])
+        if item.get('valid') and item.get('snippet')
+    ])[:600]
+
+    pain_snippets = " ".join([
+        item['snippet'] for item in web_data.get('pain_points', [])
+        if item.get('valid') and item.get('snippet')
+    ])[:400]
+
+    financial_snippets = " ".join([
+        item['snippet'] for item in web_data.get('financial_signals', [])
+        if item.get('valid') and item.get('snippet')
+    ])[:300]
+
+    summary      = web_data.get('summary', '')[:400]
+    tech_keywords = web_data.get('tech_keywords', '')
+    industry     = web_data.get('industry', 'Technology')
+    data_quality = web_data.get('data_quality', 'UNKNOWN')
+
+    # ── Prompt Agente Investigador ───────────────────────
+    research_prompt = f"""Eres un analista de ventas B2B especializado en tecnología empresarial (Dell).
+Analiza esta cuenta y genera un reporte de inteligencia comercial detallado.
+
+EMPRESA: {company_name}
+INDUSTRIA: {industry}
+AÑOS SIN COMPRAR: {years_inactive}
+CALIDAD DE DATOS: {data_quality}
+
+RESUMEN PÚBLICO: {summary}
+ENTORNO TECNOLÓGICO: {tech_snippets}
+PAIN POINTS: {pain_snippets}
+SEÑALES FINANCIERAS: {financial_snippets}
+KEYWORDS TECNOLÓGICOS: {tech_keywords}
+
+SOLUCIONES DELL RECOMENDADAS:
+{product_context}
+
+Genera un análisis con estas secciones:
+1. SITUACIÓN ACTUAL
+2. PAIN POINTS CRÍTICOS
+3. OPORTUNIDAD COMERCIAL
+4. PRODUCTOS RECOMENDADOS
+5. SEÑALES DE COMPRA
+
+Sé específico con datos reales de la empresa. Mínimo 200 palabras."""
+
+    # ── Prompt Agente Vendedor ───────────────────────────
+    sales_prompt = f"""Eres un ejecutivo de ventas senior de Dell Technologies con 15 años de experiencia.
+Escribe un discurso de ventas personalizado para reconquistar esta cuenta.
+
+EMPRESA: {company_name}
+INDUSTRIA: {industry}
+AÑOS SIN COMPRAR: {years_inactive} años
+ENTORNO TECH: {tech_snippets[:300]}
+PAIN POINTS: {pain_snippets[:200]}
+
+SOLUCIONES A PROPONER:
+{product_context}
+
+REGLAS:
+- Entre 150 y 180 palabras exactamente
+- Tono profesional pero cercano
+- Menciona el nombre de la empresa al menos 2 veces
+- Referencia un pain point específico detectado
+- Propone una solución concreta con su ROI
+- Termina con un call-to-action claro
+- NO uses frases genéricas como "soluciones de clase mundial"
+- Escribe directamente el discurso, sin títulos ni secciones
+
+Escribe el discurso ahora:"""
+
+    # ── Función helper para llamar a Ollama ──────────────
+    def call_ollama(prompt: str) -> str:
+        try:
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "llama3",
+                    "prompt": prompt,
+                    "stream": False
+                },
+                timeout=120
+            )
+            return response.json().get("response", "Error: respuesta vacía de Ollama")
+        except requests.exceptions.ConnectionError:
+            return "Error: Ollama no está corriendo. Ejecuta 'ollama serve' en tu terminal."
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    # ── Agente 1: Investigador ───────────────────────────
+    research_analysis = call_ollama(research_prompt)
+
+    # ── Agente 2: Vendedor ───────────────────────────────
+    sales_speech = call_ollama(sales_prompt)
+
+    # ── Agente Auditor: validación básica ────────────────
+    word_count   = len(sales_speech.split())
+    audit_passed = 150 <= word_count <= 220
+    audit_notes  = (
+        f"✅ Discurso aprobado: {word_count} palabras. Contenido personalizado para {company_name}."
+        if audit_passed else
+        f"⚠️ Discurso fuera de rango: {word_count} palabras (esperado: 150-180). Revisar prompt."
+    )
+
+    estimated_tokens = (
+        len(research_prompt.split()) + len(sales_prompt.split()) +
+        len(research_analysis.split()) + word_count
+    )
+
     return {
-        'research_analysis': f"Análisis de {company_name}: Detectamos interés en el mercado por soluciones escalables. Los datos muestran oportunidad después de {years_inactive} años de inactividad.",
-        'sales_speech': f"Hola equipo de {company_name}. Hemos notado su reciente enfoque en innovación tecnológica. Nuestras soluciones pueden ayudarles a reducir costos operativos.",
-        'word_count': 45,
-        'audit_passed': True,
-        'audit_notes': "Aprobado por el Agente Auditor (Policía Malo): El discurso es seguro y no contiene promesas falsas.",
-        'estimated_tokens': 850
+        'research_analysis': research_analysis,
+        'sales_speech':      sales_speech,
+        'word_count':        word_count,
+        'audit_passed':      audit_passed,
+        'audit_notes':       audit_notes,
+        'estimated_tokens':  estimated_tokens
     }
