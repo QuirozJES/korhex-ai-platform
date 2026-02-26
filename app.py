@@ -5,7 +5,15 @@ from dotenv import load_dotenv
 # Esto obliga al sistema a leer tu archivo .env antes de arrancar cualquier otra cosa
 load_dotenv()
 
-from modules.database import initialize_database
+# Importaciones locales centralizadas para Pylance
+from modules.database import (
+    initialize_database, get_cached_account, save_account_cache, 
+    get_cached_analysis, save_analysis, save_lead_score
+)
+from modules.scraper import search_account, calculate_net_new_score
+from modules.rag import get_relevant_products
+from modules.agents import run_dual_agent_analysis
+from modules.audit_logger import AuditLogger
 
 # 2. Arrancamos la memoria de la base de datos local
 initialize_database()
@@ -39,14 +47,10 @@ if analyze_btn:
     if not company_name or not company_url:
         st.warning('Please enter both Company Name and URL.')
     else:
-        from modules.scraper import search_account, calculate_net_new_score
-        from modules.rag import get_relevant_products
-        from modules.agents import run_dual_agent_analysis
-        from modules.audit_logger import AuditLogger
-        from modules.database import (
-            get_cached_account, save_account_cache, 
-            get_cached_analysis, save_analysis, save_lead_score
-        )
+        # Guardar forzosamente los valores en st.session_state
+        st.session_state['company_url'] = company_url
+        st.session_state['company_name'] = company_name
+        st.session_state['industry'] = industry
 
         prog = st.progress(0, text='Checking local cache...')
         

@@ -8,7 +8,8 @@ if not st.session_state.get('current_analysis'):
     st.stop()
 
 data = st.session_state['current_analysis']
-name = data.get('company_name', 'Unknown Company')
+# Extraer estrictamente de st.session_state
+name = st.session_state.get('company_name')
 web = data.get('web_data', {})
 analysis = data.get('analysis', {})
 score = data.get('score', {})
@@ -33,9 +34,11 @@ st.subheader("🌐 Public Information & Intelligence")
 col_info, col_desc = st.columns([1, 2])
 
 with col_info:
-    st.write(f"**Industry:** {web.get('industry', 'N/A')}")
-    # AQUÍ ESTÁ EL TRUCO: Si no encuentra 'url', pone 'N/A' en lugar de romperse
-    url_display = web.get('url') or data.get('company_url', 'N/A')
+    # Extraer estrictamente de st.session_state para la industria y URL
+    industry_display = st.session_state.get('industry')
+    st.write(f"**Industry:** {industry_display}")
+    
+    url_display = st.session_state.get('company_url')
     st.write(f"**URL:** {url_display}")
 
 with col_desc:

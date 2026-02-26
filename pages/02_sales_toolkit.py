@@ -7,8 +7,8 @@ if not st.session_state.get('current_analysis'):
     st.stop()
 
 data = st.session_state['current_analysis']
-# Usamos .get() para todo
-name = data.get('company_name', 'Client')
+# Extraer directamente de st.session_state
+name = st.session_state.get('company_name')
 analysis = data.get('analysis', {})
 products = data.get('products', [])
 
