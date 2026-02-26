@@ -1,101 +1,110 @@
 import json
 from crewai import Agent, Task, Crew, Process
-# Usamos el LLM local para garantizar el Zero Data Leakage
 from langchain_community.llms import Ollama
 
 def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE"):
-    """
-    Motor Dual-Agent real de KORHEX.AI.
-    Procesa la información estrictamente en local usando CrewAI y Ollama.
-    """
-    
-    # 1. Conexión al cerebro local (Ej. modelo llama3 o mistral corriendo en la RTX 5080)
-    # Si Ollama corre en el puerto por defecto, LangChain lo detecta automáticamente.
-    local_llm = Ollama(model="mistral")
 
-    # --- AGENTES (Modo Sigilo Activado) ---
-    
+    # ── 1. Preparación de Datos (Lo que rescatamos del Merge) ──────────────
+    product_context = "\n".join([
+        f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']} | Pain: {p['pain_solved']}"
+        for p in products
+    ]) if products else "No hay productos específicos identificados."
+
+    tech_snippets = " ".join([
+        item['snippet'] for item in web_data.get('tech_environment', [])
+        if item.get('valid') and item.get('snippet')
+    ])[:600]
+
+    pain_snippets = " ".join([
+        item['snippet'] for item in web_data.get('pain_points', [])
+        if item.get('valid') and item.get('snippet')
+    ])[:400]
+
+    summary      = web_data.get('summary', '')[:400]
+    industry     = web_data.get('industry', 'Technology')
+
+    # ── 2. Conexión Local (Zero Data Leakage) ──────────────
+    local_llm = Ollama(model="llama3") # Usamos llama3 como pedía el código original
+
+    # ── 3. Agentes de CrewAI (Modo Sigilo: verbose=False) ──────────────
     research_agent = Agent(
-        role='Auditor de Inteligencia Comercial',
-        goal=f'Analizar la huella digital de {company_name} y extraer necesidades sin inventar datos.',
-        backstory='Un analista paranoico de la ciberseguridad que audita la viabilidad de un cliente basándose solo en los datos provistos.',
-        verbose=False,  # Zero Data Leakage (No imprime en consola)
+        role='Analista de Inteligencia Comercial B2B',
+        goal=f'Generar un reporte detallado de la situación técnica de {company_name}.',
+        backstory='Eres un analista senior especializado en tecnología empresarial (Dell). Eres analítico y vas directo al grano.',
+        verbose=False,
         llm=local_llm,
         allow_delegation=False
     )
 
     sales_agent = Agent(
-        role='Estratega B2B Senior',
-        goal='Redactar pitches de venta letales o advertir sobre riesgos operativos.',
-        backstory='Un Account Manager veterano. Sabe exactamente qué productos ofrecer y es implacable descartando cuentas que hacen perder el tiempo.',
-        verbose=False,  # Zero Data Leakage
+        role='Estratega de Ventas Senior (Dell Technologies)',
+        goal='Redactar pitches persuasivos o advertir de riesgos operativos.',
+        backstory='Ejecutivo veterano. Sabes exactamente qué productos ofrecer y no pierdes el tiempo con clientes sin potencial.',
+        verbose=False,
         llm=local_llm,
         allow_delegation=False
     )
 
-    # --- TAREAS ---
-    
-    # Tarea 1: Auditoría y Resumen
+    # ── 4. Tareas (Tasks) ──────────────
     research_task = Task(
-        description=f'''
-        Analiza la información recolectada de {company_name}, inactiva por {years_inactive} años.
-        Datos web extraídos: {json.dumps(web_data)[:1500]}
-        
-        Redacta un reporte analítico de un párrafo sobre sus principales puntos de dolor o iniciativas tecnológicas.
-        ''',
-        expected_output="Un párrafo conciso detallando la situación actual de la empresa.",
+        description=f"""
+        Analiza esta cuenta y genera un reporte de inteligencia comercial.
+        EMPRESA: {company_name} | INDUSTRIA: {industry} | AÑOS SIN COMPRAR: {years_inactive}
+        RESUMEN: {summary}
+        ENTORNO TECH: {tech_snippets}
+        PAIN POINTS: {pain_snippets}
+
+        Genera un análisis con: 1. SITUACIÓN ACTUAL, 2. PAIN POINTS CRÍTICOS, 3. OPORTUNIDAD COMERCIAL.
+        """,
+        expected_output="Reporte estructurado de la situación de la empresa.",
         agent=research_agent
     )
 
-    # Lógica de Descarte (Regla NUEVA)
+    # ── Reglas de Negocio del Inge 3 ──
     if client_status == "DISCARD":
-        sales_description = f'''
+        sales_description = f"""
         El cliente {company_name} está en modo DISCARD.
-        REGLA ESTRICTA: NO redactes el pitch de ventas. 
+        NO redactes el pitch de ventas. 
         En su lugar, redacta un 'Aviso de Riesgo Operativo' de máximo 50 palabras aconsejándole al equipo por qué NO vale la pena invertir tiempo en esta empresa.
-        '''
+        """
         expected_sales = "Un 'Aviso de Riesgo Operativo' de máximo 50 palabras."
         audit_passed = False
-        audit_notes = "Rechazado por el Auditor: Alto riesgo operativo o falta de datos (Modo DISCARD)."
+        audit_notes = "Rechazado por el Auditor: Alto riesgo operativo (Modo DISCARD)."
     else:
-        sales_description = f'''
-        Basado en el análisis de investigación, redacta un pitch de ventas para {company_name}.
-        Catálogo de productos disponibles para ofrecer: {json.dumps(products)}
-        
-        REGLA DEL TOP 5: Analiza los productos encontrados y preséntalos como un 'Top 5 Ordenado por Prioridad'. El criterio de orden es el impacto financiero y la urgencia operativa para la industria del cliente. Enuméralos del 1 al 5.
-        '''
-        expected_sales = "Un pitch de ventas persuasivo que incluya la lista 'Top 5 Ordenado por Prioridad'."
-        audit_passed = True
-        audit_notes = "Aprobado por el Auditor: El discurso cumple con las reglas de negocio y ofrece el Top 5."
+        sales_description = f"""
+        Basado en el análisis, redacta un discurso de ventas personalizado para {company_name}.
+        SOLUCIONES DELL RECOMENDADAS:
+        {product_context}
 
-    # Tarea 2: Pitch o Descarte
+        REGLA DEL TOP 5: Analiza los productos encontrados y preséntalos como un 'Top 5 Ordenado por Prioridad'. El criterio de orden es el impacto financiero y la urgencia operativa para la industria del cliente. Enuméralos del 1 al 5.
+        """
+        expected_sales = "Pitch de ventas persuasivo que incluya la lista 'Top 5 Ordenado por Prioridad'."
+        audit_passed = True
+        audit_notes = "Aprobado por el Auditor: Cumple con la Regla del Top 5."
+
     sales_task = Task(
         description=sales_description,
         expected_output=expected_sales,
         agent=sales_agent
     )
 
-    # --- EJECUCIÓN DEL CREW ---
-    
+    # ── 5. Ejecución del Crew ──────────────
     crew = Crew(
         agents=[research_agent, sales_agent],
         tasks=[research_task, sales_task],
         process=Process.sequential,
-        verbose=False # Doble validación de sigilo
+        verbose=False
     )
 
-    # Encendiendo el motor...
     result = crew.kickoff()
-    
-    # Formateo de salida para cumplir con la estructura que espera app.py
-    final_output = str(result)
-    word_count = len(final_output.split())
-    
+    sales_speech = str(result)
+    word_count = len(sales_speech.split())
+
     return {
-        'research_analysis': "Auditoría completada en local. Revisa el pitch para la estrategia final.",
-        'sales_speech': final_output,
+        'research_analysis': "Investigación completada por CrewAI. Revisa el resultado final.",
+        'sales_speech': sales_speech,
         'word_count': word_count,
         'audit_passed': audit_passed,
         'audit_notes': audit_notes,
-        'estimated_tokens': int(word_count * 1.5) # Estimación interna para el ROI
+        'estimated_tokens': int(word_count * 1.5) + 300
     }
