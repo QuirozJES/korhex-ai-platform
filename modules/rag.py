@@ -2,7 +2,7 @@ import json, os
 
 def load_portfolio():
     base_dir = os.path.dirname(__file__)
-    path = os.path.join(base_dir, '..', 'data', 'portfolio.json')
+    path = os.path.join(base_dir, 'data', 'portfolio.json')
     if not os.path.exists(path):
         return []
     with open(path, 'r', encoding='utf-8') as f:
