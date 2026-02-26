@@ -291,7 +291,7 @@ def calculate_net_new_score(years_inactive: int, web_data: dict) -> dict:
         'total_score': total,
         'priority': priority,
         'color': color,
-        'factors': {
+        'breakdown': {
             'Inactivity Factor': inactivity_score,
             'Tech Initiatives': tech_score,
             'Pain Points Detected': pain_score,
