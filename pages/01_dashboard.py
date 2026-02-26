@@ -3,6 +3,7 @@
 Propietario: Ingeniero 5 (UI)
 """
 import streamlit as st
+from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
 
 try:
     from modules.ui_theme import page_header, badge, score_bar, priority_badge, no_data_state, get_analysis
@@ -32,6 +33,7 @@ except Exception as e:
 current = get_analysis()
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
+st.markdown('<div class="kx-section-title">◈ Health del Pipeline</div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.metric("Cuentas Analizadas", len(top5))
@@ -74,10 +76,10 @@ else:
         st.markdown(f"""
         <div class="kx-card kx-card-accent" style="display:flex;align-items:flex-start;gap:1.2rem;">
             <div style="font-family:'Share Tech Mono',monospace;font-size:2rem;
-                        font-weight:900;color:{rc};min-width:2rem;line-height:1.1;">#{rank}</div>
+                        font-weight:900;color:{rc};min-width:2.2rem;line-height:1.1;">#{rank}</div>
             <div style="flex:1;">
-                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.3rem;">
-                    <span style="font-size:1.05rem;font-weight:700;color:#FFF;">{company}</span>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.35rem;">
+                    <span style="font-size:1.12rem;font-weight:800;color:#FFF;letter-spacing:0.02em;">{company}</span>
                     {priority_badge(priority)} {net_new_html}
                 </div>
                 <div style="color:#6B7280;font-size:0.78rem;font-family:'Share Tech Mono',monospace;margin-bottom:0.4rem;">
@@ -144,3 +146,5 @@ if current:
                 </div>""", unsafe_allow_html=True)
         else:
             st.info("El módulo scraper.py debe retornar un dict 'factors' dentro del score para ver el desglose.")
+
+page_footer()

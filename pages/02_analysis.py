@@ -3,6 +3,7 @@
 Propietario: Ingeniero 5 (UI)
 """
 import streamlit as st
+from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
 
 try:
     from modules.ui_theme import page_header, badge, no_data_state, get_analysis
@@ -41,7 +42,7 @@ ms        = analysis.get("processing_ms", 0)
 st.markdown(f"""
 <div class="kx-card kx-card-accent" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
     <div>
-        <div style="font-size:1.2rem;font-weight:700;color:#FFF;">{company}</div>
+        <div style="font-size:1.18rem;font-weight:800;color:#FFF;letter-spacing:0.02em;">{company}</div>
         <div style="color:#6B7280;font-size:0.8rem;font-family:'Share Tech Mono',monospace;">
             {industry} &nbsp;|&nbsp; {years} año(s) inactivo
         </div>
@@ -59,6 +60,7 @@ if not audit_ok:
     st.warning(f"⚠️ **Auditoría:** {audit_notes}")
 
 st.markdown("---")
+st.markdown('<div class="kx-section-title">◈ 6 Bloques de Inteligencia de Cuenta</div>', unsafe_allow_html=True)
 
 # ── 6 Secciones de análisis ───────────────────────────────────────────────────
 SECTIONS = [
@@ -105,8 +107,12 @@ for idx, (title, web_key, icon, card_class) in enumerate(SECTIONS, 1):
         elif raw_snippets:
             st.markdown(f'<div class="kx-section-title">◈ Fuentes Web Recopiladas</div>', unsafe_allow_html=True)
             for item in raw_snippets[:4]:
-                snippet = item.get("snippet","") or item if isinstance(item, str) else str(item)
-                source  = item.get("url","") if isinstance(item, dict) else ""
+                if isinstance(item, dict):
+                    snippet = item.get("snippet") or item.get("title") or item.get("content") or str(item)
+                    source  = item.get("url") or item.get("source") or ""
+                else:
+                    snippet = str(item)
+                    source  = ""
                 st.markdown(f"""
                 <div class="kx-card" style="padding:0.8rem 1rem;margin-bottom:0.5rem;">
                     <div style="font-size:0.85rem;color:#C9D1D9;line-height:1.6;">{snippet}</div>
@@ -137,3 +143,5 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+page_footer()

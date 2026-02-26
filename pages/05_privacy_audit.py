@@ -4,6 +4,7 @@ El arma secreta para el jurado: demuestra en tiempo real que 0 bytes salieron de
 Propietario: Ingeniero 5 (UI)
 """
 import streamlit as st
+from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
 
 try:
     from modules.ui_theme import page_header, badge, no_data_state, apply_theme
@@ -57,6 +58,7 @@ st.markdown("""
 st.markdown("---")
 
 # ── KPIs del audit ────────────────────────────────────────────────────────────
+st.markdown('<div class="kx-section-title">◈ KPIs de Privacidad</div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.metric(
@@ -219,3 +221,5 @@ st.markdown(f"""
     <span style="color:#00FFB2;">Zero Data Leakage Guaranteed</span>
 </div>
 """, unsafe_allow_html=True)
+
+page_footer()

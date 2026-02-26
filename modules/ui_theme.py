@@ -142,6 +142,59 @@ hr { border-color: var(--border) !important; }
 
 .kx-audit-zero { font-family:var(--font-mono); font-size:3.5rem; font-weight:900;
   color:var(--neon); text-shadow:var(--neon-glow); text-align:center; line-height:1; }
+
+/* --- Visual refinements & overrides --- */
+
+:root {
+  --radius: 8px;
+}
+
+html, body, [data-testid="stAppViewContainer"] {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(0,255,178,0.05), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(0,180,255,0.08), transparent 55%);
+  line-height: 1.6 !important;
+}
+
+h1 {
+  font-weight: 800 !important;
+}
+
+h2 {
+  letter-spacing: 0.03em !important;
+}
+
+.stTextInput > div > div > input:focus {
+  outline: none !important;
+  border-color: var(--neon) !important;
+  box-shadow: 0 0 0 1px var(--neon-dim) !important;
+}
+
+hr {
+  margin: 1.5rem 0 !important;
+}
+
+.kx-card {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(0,255,178,0.06), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(0,180,255,0.04), transparent 55%),
+    var(--bg3);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.kx-card:hover {
+  box-shadow: 0 0 16px var(--neon-dim);
+  transform: translateY(-1px);
+}
+
+.kx-section-title {
+  letter-spacing:0.18em;
+  padding-bottom:0.35rem;
+  margin-bottom:0.9rem;
+}
+
 </style>
 """
 
@@ -189,3 +242,24 @@ def no_data_state(msg: str = "No hay datos disponibles.", hint: str = ""):
 
 def get_analysis() -> dict | None:
     return st.session_state.get("current_analysis", None)
+
+def page_footer():
+    """Footer estándar con Solution Viability. Llamar al FINAL de cada página."""
+    st.markdown("---")
+    st.markdown("""
+    <div style="display:flex; justify-content:center; gap:2rem; flex-wrap:wrap;
+                padding:0.8rem 0; border-top:1px solid #1E2A35;">
+        <span style="font-family:'Share Tech Mono',monospace; font-size:0.7rem; color:#6B7280;">
+            ✓ No commercial AI licenses
+        </span>
+        <span style="font-family:'Share Tech Mono',monospace; font-size:0.7rem; color:#6B7280;">
+            ✓ Open-source only (Ollama · CrewAI · Streamlit · SQLite)
+        </span>
+        <span style="font-family:'Share Tech Mono',monospace; font-size:0.7rem; color:#6B7280;">
+            ✓ No real client data
+        </span>
+        <span style="font-family:'Share Tech Mono',monospace; font-size:0.7rem; color:#00FFB2;">
+            ✓ 0 bytes to cloud
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
