@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from modules.database import initialize_database
+from modules.ui_theme import page_header
 
 # 2. Arrancamos la memoria de la base de datos local
 initialize_database()
@@ -15,30 +16,58 @@ st.set_page_config(page_title='KORHEX.AI', page_icon='🤖', layout='wide')
 if 'current_analysis' not in st.session_state:
     st.session_state['current_analysis'] = None
 
-st.title('KORHEX.AI Account Intelligence Platform')
+st.markdown("""
+<div style="position:relative; display:inline-block; cursor:default;">
+    <h1 style="font-family:'Share Tech Mono',monospace; color:#00FFB2;
+               text-shadow: 0 0 8px #00FFB2, 0 0 20px #00FFB260;
+               margin-bottom:0; font-size:2rem; letter-spacing:0.05em;">
+        KORHEX.AI Account Intelligence Platform
+    </h1>
+    <div class="kx-easter-egg">
+        ▸ Zuany · Reyes · Quiroz · Herrera · Morales ◂
+    </div>
+</div>
+
+<style>
+.kx-easter-egg {
+    position: absolute;
+    top: -1.4rem;
+    left: 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.25em;
+    color: transparent;
+    transition: color 0.6s ease, text-shadow 0.6s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+div:hover > .kx-easter-egg {
+    color: #00FFB280;
+    text-shadow: 0 0 10px #00FFB250;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.caption('Local AI | Zero Data Leakage | Dual-Agent | SQLite Memory')
 
 with st.sidebar:
-    st.header('Account Input')
+    st.markdown('<div class="kx-section-title">◈ Account Input</div>', unsafe_allow_html=True)
     company_url = st.text_input('Company URL', placeholder='https://example.com')
     company_name = st.text_input('Company Name', placeholder='e.g. Toyota')
     industry = st.selectbox('Industry', ['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Energy', 'Telecommunications'])
     years_inactive = st.slider('Years since last purchase', 0, 10, 3)
     analyze_btn = st.button('Execute Analysis', type='primary', use_container_width=True)
-    
-    st.divider()
-    with st.expander('Solution Viability'):
-        st.markdown('''
-        * No commercial AI licenses required
-        * Open-source tools only (Ollama, CrewAI, Streamlit, SQLite)
-        * Simulated/example accounts = no real client data
-        * Full data confidentiality = 0 bytes to cloud
-        ''')
 
 if analyze_btn:
     if not company_name or not company_url:
         st.warning('Please enter both Company Name and URL.')
     else:
+        # ── Guardar variables en session_state ANTES de cualquier operación ──
+        st.session_state['company_name']    = company_name
+        st.session_state['company_url']     = company_url
+        st.session_state['industry']        = industry
+        st.session_state['years_inactive']  = years_inactive
+
         from modules.scraper import search_account, calculate_net_new_score
         from modules.rag import get_relevant_products
         from modules.agents import run_dual_agent_analysis
@@ -92,6 +121,8 @@ if analyze_btn:
         
         # Guardamos el resultado en la sesión
         st.session_state['current_analysis'] = {
+            'company_url':    company_url,
+            'industry':       industry,
             'company_name': company_name, 'web_data': web_data,
             'analysis': analysis, 'products': products,
             'score': score, 'years_inactive': years_inactive
