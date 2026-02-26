@@ -62,6 +62,12 @@ if analyze_btn:
     if not company_name or not company_url:
         st.warning('Please enter both Company Name and URL.')
     else:
+        # ── Guardar variables en session_state ANTES de cualquier operación ──
+        st.session_state['company_name']    = company_name
+        st.session_state['company_url']     = company_url
+        st.session_state['industry']        = industry
+        st.session_state['years_inactive']  = years_inactive
+
         from modules.scraper import search_account, calculate_net_new_score
         from modules.rag import get_relevant_products
         from modules.agents import run_dual_agent_analysis
@@ -115,6 +121,8 @@ if analyze_btn:
         
         # Guardamos el resultado en la sesión
         st.session_state['current_analysis'] = {
+            'company_url':    company_url,
+            'industry':       industry,
             'company_name': company_name, 'web_data': web_data,
             'analysis': analysis, 'products': products,
             'score': score, 'years_inactive': years_inactive

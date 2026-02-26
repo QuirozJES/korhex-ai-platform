@@ -147,4 +147,46 @@ if current:
         else:
             st.info("El módulo scraper.py debe retornar un dict 'factors' dentro del score para ver el desglose.")
 
+# ── Exportar reporte PDF ──────────────────────────────────────────────────────
+st.markdown("---")
+st.markdown('<div class="kx-section-title">◈ Exportar Reporte</div>', unsafe_allow_html=True)
+
+if current:
+    try:
+        from modules.pdf_report import generate_report
+
+        col_btn, col_info = st.columns([1, 3])
+        with col_btn:
+            with st.spinner("Generando PDF..."):
+                pdf_bytes = generate_report(current)
+
+            st.download_button(
+                label="📄 Descargar Reporte PDF",
+                data=pdf_bytes,
+                file_name=f"KORHEX_{current.get('company_name','reporte').replace(' ','_')}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        with col_info:
+            st.markdown("""
+            <div style="padding:0.6rem 1rem;border:1px solid #1E2A35;border-radius:6px;
+                        font-family:'Share Tech Mono',monospace;font-size:0.75rem;color:#6B7280;
+                        margin-top:0.3rem;">
+                Incluye: Empresa · Lead Score · 6 elementos de análisis · Sales Speech verificado
+                &nbsp;|&nbsp; <span style="color:#00FFB2;">Generado 100% local</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    except ImportError:
+        st.warning("Instala reportlab: `pip install reportlab`")
+    except Exception as e:
+        st.warning(f"Error generando PDF: {e}")
+else:
+    st.markdown("""
+    <div style="color:#6B7280;font-family:'Share Tech Mono',monospace;font-size:0.82rem;
+                padding:0.6rem 0;">
+        Ejecuta un análisis primero para habilitar la exportación de reporte.
+    </div>
+    """, unsafe_allow_html=True)
+
 page_footer()

@@ -12,10 +12,10 @@ except ImportError:
     st.error("⚠️ modules/ui_theme.py no encontrado.")
     st.stop()
 
+import pandas as pd
 try:
     from modules.audit_logger import get_privacy_dashboard_data
     from modules.database import get_connection
-    import pandas as pd
     HAS_DB = True
 except ImportError:
     HAS_DB = False
@@ -104,30 +104,9 @@ ARCH_ROWS = [
     ("Tavily Web Search",     "API Pública",               "Solo URLs",   "yellow"),
 ]
 
-st.markdown("""
-<div class="kx-card" style="padding:0;">
-<table style="width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:0.82rem;">
-    <thead>
-        <tr style="border-bottom:2px solid #1E2A35;">
-            <th style="text-align:left;padding:0.8rem 1rem;color:#6B7280;text-transform:uppercase;letter-spacing:0.1em;font-size:0.7rem;">Componente</th>
-            <th style="text-align:left;padding:0.8rem 1rem;color:#6B7280;text-transform:uppercase;letter-spacing:0.1em;font-size:0.7rem;">Ubicación</th>
-            <th style="text-align:left;padding:0.8rem 1rem;color:#6B7280;text-transform:uppercase;letter-spacing:0.1em;font-size:0.7rem;">¿A la Nube?</th>
-        </tr>
-    </thead>
-    <tbody>
-""", unsafe_allow_html=True)
-
-for component, location, cloud, color in ARCH_ROWS:
-    badge_html = f'<span class="kx-badge badge-{color}">{cloud}</span>'
-    st.markdown(f"""
-        <tr style="border-bottom:1px solid #1E2A35;">
-            <td style="padding:0.7rem 1rem;color:#C9D1D9;font-weight:600;">{component}</td>
-            <td style="padding:0.7rem 1rem;color:#6B7280;">{location}</td>
-            <td style="padding:0.7rem 1rem;">{badge_html}</td>
-        </tr>
-    """, unsafe_allow_html=True)
-
-st.markdown("</tbody></table></div>", unsafe_allow_html=True)
+arch_data = [(c, l, cl) for c, l, cl, _ in ARCH_ROWS]
+arch_df = pd.DataFrame(arch_data, columns=["Componente", "Ubicación", "¿A la Nube?"])
+st.dataframe(arch_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 
