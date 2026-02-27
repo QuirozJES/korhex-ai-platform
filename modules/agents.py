@@ -19,11 +19,6 @@ def run_dual_agent_analysis(company_name, web_data, products, years_inactive, cl
     tech_snippets = " ".join([i['snippet'] for i in web_data.get('tech_environment', []) if i.get('valid')])[:600]
     pain_snippets = " ".join([i['snippet'] for i in web_data.get('pain_points', []) if i.get('valid')])[:400]
 
-    # ── 2. Cerebro Local (Zero Data Leakage) ──────────────
-    local_llm = LLM(
-        model="ollama/llama3",
-        base_url="http://localhost:11434"
-    )
 
     financial_snippets = " ".join([
         item['snippet'] for item in web_data.get('financial_signals', [])
@@ -42,7 +37,7 @@ def run_dual_agent_analysis(company_name, web_data, products, years_inactive, cl
     )
 
     # ── 3. Prompts ───────────────────────────────────────
-    research_prompt = f"""You are a B2B sales analyst specialized in enterprise technology (Dell).
+    research_prompt = f"""You are a B2B sales analyst specialized in enterprise technology (HPE).
 Analyze this account and generate a detailed commercial intelligence report.
 
 COMPANY: {company_name}
