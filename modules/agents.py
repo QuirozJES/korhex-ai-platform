@@ -10,22 +10,20 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE"):
-
-    # ── 1. Preparación de contexto ──────────────────────
+    # ── 1. Contexto de Datos Reales ──────────────
     product_context = "\n".join([
         f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']} | Pain: {p['pain_solved']}"
         for p in products
-    ]) if products else "No hay productos específicos identificados."
+    ]) if products else "No hay productos identificados."
 
-    tech_snippets = " ".join([
-        item['snippet'] for item in web_data.get('tech_environment', [])
-        if item.get('valid') and item.get('snippet')
-    ])[:600]
+    tech_snippets = " ".join([i['snippet'] for i in web_data.get('tech_environment', []) if i.get('valid')])[:600]
+    pain_snippets = " ".join([i['snippet'] for i in web_data.get('pain_points', []) if i.get('valid')])[:400]
 
-    pain_snippets = " ".join([
-        item['snippet'] for item in web_data.get('pain_points', [])
-        if item.get('valid') and item.get('snippet')
-    ])[:400]
+    # ── 2. Cerebro Local (Zero Data Leakage) ──────────────
+    local_llm = LLM(
+        model="ollama/llama3",
+        base_url="http://localhost:11434"
+    )
 
     financial_snippets = " ".join([
         item['snippet'] for item in web_data.get('financial_signals', [])
@@ -117,17 +115,22 @@ IMPORTANT: Write your entire response in English."""
     )
 
     sales_agent = Agent(
-        role='Senior Sales Strategist (Dell Technologies)',
+        role='Senior HPE Sales Specialist',
         goal=(
             'Write persuasive pitches that include a Top 5 Solutions list ordered by priority. '
-            'You MUST strictly provide a numbered list of exactly 5 products (Top 5 Solutions). '
+            'You MUST strictly provide a numbered list of exactly 5 products from the HPE portfolio (Top 5 HPE Solutions). '
+            'Use ONLY HPE products in your speech — never mention Dell, NVIDIA, Cisco, or any competitor brand. '
             'Be extremely concise with each product description. '
-            'Maximum word limit is 250 words.'
+            'Maximum word limit is 240 words. '
+            'CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response STRICTLY in professional Business English. '
+            'DO NOT output a single word in Spanish or any other language.'
         ),
         backstory=(
-            'Veteran executive. You know exactly which products to offer and how to position them. '
-            'You are known for being precise: you always include the Top 5 Solutions numbered list '
-            'and never exceed the agreed word budget of 250 words.'
+            'You are a Senior HPE Sales Specialist with 12 years of experience selling HPE enterprise infrastructure. '
+            'You know the HPE portfolio inside out: ProLiant Gen11, Alletra Storage, GreenLake, Aruba Networking, Zerto, EliteBook, and EdgeConnect SecOps. '
+            'You NEVER recommend competitor products. You always include the Top 5 HPE Solutions list, '
+            'never exceed 240 words, and you ALWAYS write exclusively in Business English — '
+            'never in Spanish, regardless of the company or industry context.'
         ),
         verbose=False,
         llm=mi_llm,
@@ -148,23 +151,27 @@ IMPORTANT: Write your entire response in English."""
         audit_notes    = "Rejected by Auditor: High operational risk (DISCARD mode)."
     else:
         sales_description = f"""
-        Based on the analysis, write a personalized sales pitch for {company_name}.
+        Based on the analysis, write a personalized HPE Enterprise sales pitch for {company_name}.
         INDUSTRY: {industry} | YEARS WITHOUT PURCHASING: {years_inactive}
         TECH ENVIRONMENT: {tech_snippets[:300]}
         PAIN POINTS: {pain_snippets[:200]}
 
-        RECOMMENDED DELL SOLUTIONS:
+        HPE RECOMMENDED SOLUTIONS:
         {product_context}
 
-        FORMAT RULES (MANDATORY):
+        FORMAT RULES (MANDATORY — FOLLOW EXACTLY):
         - Write exactly 2 short opening paragraphs (context + main pain point).
-        - Then write a numbered list titled 'Top 5 Solutions:' with exactly 5 products.
-          For each product: one sentence max describing its benefit for {company_name}.
+        - Then write a numbered list titled 'Top 5 HPE Solutions:' with exactly 5 HPE products.
+          For each product: one sentence max describing its specific benefit for {company_name}.
         - End with one clear call-to-action sentence.
-        - Total word count must be between 150 and 250 words. DO NOT exceed 250 words.
-        IMPORTANT: You must write your entire response in English.
+        - Total word count must be between 150 and 240 words. DO NOT exceed 240 words.
+        - Use ONLY HPE products. DO NOT mention Dell, NVIDIA, Cisco, or any competitor.
+
+        CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response STRICTLY in professional
+        Business English. DO NOT output a single word in Spanish or any other language.
+        CRITICAL LENGTH RULE: You must strictly limit your entire speech to a MAXIMUM of 240 words.
         """
-        expected_sales = "Sales pitch with Top 5 Solutions numbered list, 150-250 words."
+        expected_sales = "HPE sales pitch with Top 5 HPE Solutions numbered list, 150-240 words, in English only."
         audit_passed   = True
         audit_notes    = "Approved by Auditor: Complies with the Top 5 Rule."
 
@@ -209,11 +216,11 @@ IMPORTANT: Write your entire response in English."""
     word_count   = len(sales_speech.split())
 
     if client_status != "DISCARD":
-        audit_passed = 150 <= word_count <= 300
+        audit_passed = 150 <= word_count <= 240
         audit_notes  = (
             f"Speech approved: {word_count} words."
             if audit_passed else
-            f"Speech out of range: {word_count} words (expected: 150-300)."
+            f"Speech out of range: {word_count} words (expected: 150-240)."
         )
 
     return {

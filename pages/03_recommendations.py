@@ -1,9 +1,10 @@
 """
-03_recommendations.py — Portfolio de Productos Recomendados (RAG)
-Propietario: Ingeniero 5 (UI)
-FIXED: usa modules.ui_theme, no streamlit_app.ui_utils
+03_recommendations.py — Recommended Product Portfolio (RAG)
+Owner: Engineer 5 (UI)
+FIXED: uses modules.ui_theme, not streamlit_app.ui_utils
 """
 import streamlit as st
+import re
 from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
 
 try:
@@ -48,6 +49,7 @@ st.markdown(f"""
 
 st.markdown("---")
 
+# ── Product grid ───────────────────────────────────────────────────────────────
 if not products:
     no_data_state(
         msg="No recommended products found.",
@@ -58,11 +60,24 @@ if not products:
 # ── Grid de productos ──────────────────────────────────────────────────────────
 st.markdown('<div class="kx-section-title">◈ RAG-Recommended Solutions</div>', unsafe_allow_html=True)
 
+import html as _html  # kept for &amp; in static HTML only
+
+def _strip_tags(text: str) -> str:
+    """Strip HTML tags, escape sequences, and collapse whitespace to single spaces."""
+    t = str(text or '')
+    # Remove HTML tags
+    t = re.sub(r'<[^>]+>', '', t)
+    # Convert literal escape sequences that survive JSON parsing
+    t = t.replace('\\n', ' ').replace('\\t', ' ').replace('\\r', ' ')
+    # Collapse all real whitespace (newlines, tabs, spaces) into single spaces
+    t = ' '.join(t.split())
+    return t.strip()
+
 for i, product in enumerate(products):
-    name        = product.get("name", f"Producto {i+1}")
-    category    = product.get("category", "")
-    description = product.get("description", "")
-    roi_pitch   = product.get("roi_pitch", "")
+    name        = _strip_tags(product.get("name", f"Product {i+1}"))
+    category    = _strip_tags(product.get("category", ""))
+    description = _strip_tags(product.get("description", ""))
+    roi_pitch   = _strip_tags(product.get("roi_pitch", ""))
     match_score = int(product.get("match_score", 0))
     features    = product.get("features", []) or []
     pain_points = product.get("pain_points_addressed", []) or []
@@ -73,19 +88,30 @@ for i, product in enumerate(products):
     col_main, col_side = st.columns([3, 1])
 
     with col_main:
-        st.markdown(f"""
-        <div class="kx-card {card_class}">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.6rem;">
-                <div>
-                    <div style="font-size:1.05rem;font-weight:700;color:#FFF;">{name}</div>
-                    {f'<div style="color:#6B7280;font-size:0.75rem;font-family:monospace;margin-top:0.2rem;">{category}</div>' if category else ''}
-                </div>
-                {f'<span class="kx-badge badge-green">MATCH {match_score}%</span>' if match_score else ''}
-            </div>
-            {f'<div style="color:#C9D1D9;font-size:0.88rem;line-height:1.6;margin-bottom:0.8rem;">{description}</div>' if description else ''}
-            {f'<div style="background:#050A0E;border-radius:4px;padding:0.8rem;border-left:2px solid #00FFB2;font-size:0.85rem;color:#C9D1D9;line-height:1.6;"><span style="color:#00FFB2;font-family:monospace;font-size:0.7rem;letter-spacing:0.1em;">◈ ROI PITCH &nbsp;</span><br>{roi_pitch}</div>' if roi_pitch else ''}
-        </div>
-        """, unsafe_allow_html=True)
+        cat_html   = f'<div style="color:#6B7280;font-size:0.75rem;font-family:monospace;margin-top:0.2rem;">{_html.escape(category)}</div>' if category else ''
+        badge_html = f'<span class="kx-badge badge-green">MATCH {match_score}%</span>' if match_score else ''
+        desc_html  = f'<div style="color:#C9D1D9;font-size:0.88rem;line-height:1.6;margin-bottom:0.8rem;">{_html.escape(description)}</div>' if description else ''
+        roi_html   = (
+            f'<div style="background:#050A0E;border-radius:4px;padding:0.8rem;border-left:2px solid #00FFB2;'
+            f'font-size:0.85rem;color:#C9D1D9;line-height:1.6;">'
+            f'<span style="color:#00FFB2;font-family:monospace;font-size:0.7rem;letter-spacing:0.1em;">◈ ROI PITCH &nbsp;</span>'
+            f'<br>{_html.escape(roi_pitch)}</div>'
+        ) if roi_pitch else ''
+
+        card_html = f"""
+<div class="kx-card {card_class}">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.6rem;">
+    <div>
+      <div style="font-size:1.05rem;font-weight:700;color:#FFF;">{_html.escape(name)}</div>
+      {cat_html}
+    </div>
+    {badge_html}
+  </div>
+  {desc_html}
+  {roi_html}
+</div>""".strip()
+        st.markdown(card_html, unsafe_allow_html=True)
+
 
     with col_side:
         if features:
@@ -96,16 +122,10 @@ for i, product in enumerate(products):
             st.markdown('<div class="kx-section-title" style="margin-top:0.8rem;">◈ Pain Points Addressed</div>', unsafe_allow_html=True)
             for pp in pain_points[:3]:
                 st.markdown(f'<div style="font-size:0.78rem;color:#FF3B5C;padding:0.2rem 0;">⚡ {pp}</div>', unsafe_allow_html=True)
-        if not features and not pain_points:
-            st.markdown("""
-            <div style="color:#6B7280;font-size:0.75rem;font-family:monospace;margin-top:1rem;
-                        padding:0.5rem;border:1px dashed #1E2A35;border-radius:4px;text-align:center;">
-                Add 'features' and 'pain_points_addressed' to portfolio.json
-            </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Mapa Pain Point → Solución ────────────────────────────────────────────────
+# ── Mapping Pain Point → Solution ─────────────────────────────────────────────
 st.markdown("---")
 st.markdown('<div class="kx-section-title">◈ Client Pain Point → Proposed Solution</div>', unsafe_allow_html=True)
 
@@ -130,5 +150,5 @@ if pains and products:
         """, unsafe_allow_html=True)
 else:
     st.info("Run a full analysis to view the pain point → solution mapping.")
-    
+
 page_footer()

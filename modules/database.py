@@ -143,3 +143,31 @@ def get_audit_summary() -> dict:
                               SUM(bytes_to_cloud) as bytes_to_cloud, 
                               MIN(timestamp) as first_use FROM audit_log''').fetchone()
     return dict(row) if row else {}
+
+
+def purge_company_data(company_name: str) -> None:
+    """
+    Elimina permanentemente los datos locales de una empresa específica.
+    - Borra filas en account_cache y lead_scores con ese company_name.
+    - Mantiene el audit_log pero sobrescribe company_name con 'REDACTED'
+      para cumplir con privacidad sin perder el historial financiero.
+    """
+    if not company_name:
+        return
+
+    with get_connection() as conn:
+        # Borrar caché de cuenta y scores asociados a esa empresa
+        conn.execute(
+            'DELETE FROM account_cache WHERE company_name = ?',
+            (company_name,),
+        )
+        conn.execute(
+            'DELETE FROM lead_scores WHERE company_name = ?',
+            (company_name,),
+        )
+
+        # Conservar el historial del audit log pero anonimizando el nombre
+        conn.execute(
+            "UPDATE audit_log SET company_name = 'REDACTED' WHERE company_name = ?",
+            (company_name,),
+        )

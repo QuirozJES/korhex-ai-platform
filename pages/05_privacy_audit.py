@@ -1,7 +1,7 @@
 """
 05_privacy_audit.py — Privacy & Cost Audit Log
-El arma secreta para el jurado: demuestra en tiempo real que 0 bytes salieron del servidor.
-Propietario: Ingeniero 5 (UI)
+The secret weapon for the jury: demonstrate in real time that 0 bytes ever left the server.
+Owner: Engineer 5 (UI)
 """
 import streamlit as st
 from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
@@ -9,13 +9,13 @@ from modules.ui_theme import page_header, badge, no_data_state, get_analysis, pa
 try:
     from modules.ui_theme import page_header, badge, no_data_state, apply_theme
 except ImportError:
-    st.error("⚠️ modules/ui_theme.py no encontrado.")
+    st.error("⚠️ modules/ui_theme.py not found.")
     st.stop()
 
 import pandas as pd
 try:
     from modules.audit_logger import get_privacy_dashboard_data
-    from modules.database import get_connection
+    from modules.database import get_connection, purge_company_data
     HAS_DB = True
 except ImportError:
     HAS_DB = False
@@ -27,7 +27,7 @@ page_header(
     subtitle="Irrefutable real-time proof: 0 bytes of client data sent to the cloud."
 )
 
-# ── Cargar datos del audit ────────────────────────────────────────────────────
+# ── Load audit data ───────────────────────────────────────────────────────────
 if HAS_DB:
     try:
         data = get_privacy_dashboard_data()
@@ -42,7 +42,7 @@ else:
         "cloud_api_calls": 0, "privacy_score": 100, "first_use": "N/A"
     }
 
-# ── Hero: El número que gana al jurado ────────────────────────────────────────
+# ── Hero: the number that wins the jury ───────────────────────────────────────
 st.markdown("""
 <div style="text-align:center;padding:2rem 0 1rem 0;">
     <div style="color:#6B7280;font-family:'Share Tech Mono',monospace;font-size:0.75rem;
@@ -57,7 +57,7 @@ st.markdown("""
 
 st.markdown("---")
 
-# ── KPIs del audit ────────────────────────────────────────────────────────────
+# ── Privacy KPIs ──────────────────────────────────────────────────────────────
 st.markdown('<div class="kx-section-title">◈ Privacy KPIs</div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 with c1:
@@ -92,7 +92,7 @@ with c4:
 
 st.markdown("---")
 
-# ── Tabla de arquitectura de privacidad ───────────────────────────────────────
+# ── Architecture proof table ───────────────────────────────────────────────────
 st.markdown('<div class="kx-section-title">◈ Architecture Proof — Zero Data Leakage</div>', unsafe_allow_html=True)
 
 ARCH_ROWS = [
@@ -110,7 +110,7 @@ st.dataframe(arch_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 
-# ── Event Log ─────────────────────────────────────────────────────────────────
+# ── AI Operations Event Log ───────────────────────────────────────────────────
 st.markdown('<div class="kx-section-title">◈ AI Operations Event Log</div>', unsafe_allow_html=True)
 
 if HAS_DB:
@@ -144,7 +144,7 @@ else:
 
 st.markdown("---")
 
-# ── Comparación ROI ────────────────────────────────────────────────────────────
+# ── Cost Comparison — KORHEX.AI vs Competition ────────────────────────────────
 st.markdown('<div class="kx-section-title">◈ Cost Comparison — KORHEX.AI vs Competition</div>', unsafe_allow_html=True)
 
 analyses = max(data.get("total_analyses", 1), 1)
@@ -155,9 +155,9 @@ claude_cost = round(tokens * 0.000015, 4)
 korhex_cost = 0.0
 
 comparison = [
-    ("🏆 KORHEX.AI",             "Ollama + Llama 3 Local", f"${korhex_cost:.2f}",   "green"),
-    ("Competidor A (GPT-4)",     "OpenAI API",             f"${gpt4_cost:.4f}",     "red"),
-    ("Competidor B (Claude API)","Anthropic API",          f"${claude_cost:.4f}",   "yellow"),
+    ("🏆 KORHEX.AI",               "Ollama + Llama 3 Local", f"${korhex_cost:.2f}",   "green"),
+    ("Competitor A (GPT-4)",      "OpenAI API",             f"${gpt4_cost:.4f}",     "red"),
+    ("Competitor B (Claude API)", "Anthropic API",          f"${claude_cost:.4f}",   "yellow"),
 ]
 
 cols = st.columns(3)
@@ -173,7 +173,7 @@ for i, (name, tech, cost, color) in enumerate(comparison):
                         color:{'#00FFB2' if is_winner else '#FF3B5C' if color=='red' else '#FFD600'};
                         font-family:'Share Tech Mono',monospace;">{cost}</div>
             <div style="font-size:0.65rem;color:#6B7280;margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.1em;">
-                por {tokens:,} tokens
+                for {tokens:,} tokens
             </div>
             {('<br><span class="kx-badge badge-green">WINNER</span>' if is_winner else '')}
         </div>
@@ -190,12 +190,55 @@ st.markdown(f"""
 
 st.markdown("---")
 
-# ── Footer de privacidad ───────────────────────────────────────────────────────
+# ── Danger Zone: Data Purge / Ghost Protocol ───────────────────────────────────
+with st.expander("⚠️ Danger Zone: Data Purge Protocol"):
+    if not HAS_DB:
+        st.warning("Database not available. The purge protocol cannot be executed.")
+    else:
+        st.markdown(
+            """
+            <div style="color:#F97373;font-size:0.8rem;font-family:'Share Tech Mono',monospace;">
+                This action executes the <b>Right to Be Forgotten</b> (GDPR) protocol and 
+                deletes all local data associated with a specific company.
+                <br><br>
+                • Rows in <code>account_cache</code> and <code>lead_scores</code> are deleted.<br>
+                • The <code>audit_log</code> is retained but the company name is stored as <b>REDACTED</b>.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        company_to_purge = st.text_input(
+            "Exact company name to purge",
+            placeholder="e.g. Toyota",
+        )
+
+        purge_clicked = st.button(
+            "🔥 PURGE CLIENT DATA",
+            type="primary",
+            use_container_width=True,
+        )
+
+        if purge_clicked:
+            target = company_to_purge.strip()
+            if not target:
+                st.warning("Enter the exact company name you want to purge.")
+            else:
+                try:
+                    purge_company_data(target)
+                    st.success(
+                        "Ghost Protocol Executed: All local data for this account has been permanently erased."
+                    )
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error executing data purge: {e}")
+
+# ── Privacy footer ────────────────────────────────────────────────────────────
 first_use = data.get("first_use", "N/A")
 st.markdown(f"""
 <div style="text-align:center;padding:1rem;color:#6B7280;
             font-family:'Share Tech Mono',monospace;font-size:0.72rem;">
-    KORHEX.AI · En operación desde: {first_use} &nbsp;|&nbsp;
+    KORHEX.AI · In operation since: {first_use} &nbsp;|&nbsp;
     Powered by Llama 3 · Ollama · CrewAI · SQLite WAL &nbsp;|&nbsp;
     <span style="color:#00FFB2;">Zero Data Leakage Guaranteed</span>
 </div>

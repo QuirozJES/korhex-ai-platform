@@ -1,6 +1,6 @@
 """
 01_dashboard.py — Top 5 Leads + Lead Score Dashboard
-Propietario: Ingeniero 5 (UI)
+Owner: Engineer 5 (UI)
 """
 import streamlit as st
 from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
@@ -23,7 +23,7 @@ page_header(
     subtitle="Top 5 accounts ranked by lead scoring algorithm — updated from local SQLite database."
 )
 
-# ── Cargar datos defensivamente ───────────────────────────────────────────────
+# ── Load data defensively ─────────────────────────────────────────────────────
 top5 = []
 try:
     top5 = get_top5() or []
@@ -38,10 +38,25 @@ c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.metric("Accounts Analyzed", len(top5))
 with c2:
-    high = sum(1 for r in top5 if (r.get("priority") or "").upper() in ("HIGH","CRITICAL"))
+    try:
+        from modules.database import get_connection
+        with get_connection() as _conn:
+            _row = _conn.execute(
+                """SELECT COUNT(DISTINCT company_name) as cnt
+                   FROM lead_scores
+                   WHERE UPPER(priority) LIKE 'HIGH%'
+                      OR UPPER(priority) = 'CRITICAL'"""
+            ).fetchone()
+            high = int(dict(_row).get("cnt") or 0) if _row else 0
+    except Exception:
+        high = sum(
+            1 for r in top5
+            if str(r.get("priority") or "").upper().startswith("HIGH")
+            or str(r.get("priority") or "").upper() == "CRITICAL"
+        )
     st.metric("High Priority 🔴", high)
 with c3:
-    net_new = sum(1 for r in top5 if r.get("is_net_new"))
+    net_new = sum(1 for r in top5 if dict(r).get("is_net_new"))
     st.metric("Net New Logos ✨", net_new)
 with c4:
     if current:
@@ -72,6 +87,7 @@ else:
         rc       = rank_colors.get(rank, "#6B7280")
 
         net_new_html = badge("NET NEW", "red") if net_new else badge("REACTIVATION", "blue")
+        status_html  = f"{priority_badge(priority)} {net_new_html}"
 
         st.markdown(f"""
         <div class="kx-card kx-card-accent" style="display:flex;align-items:flex-start;gap:1.2rem;">
@@ -80,7 +96,7 @@ else:
             <div style="flex:1;">
                 <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.35rem;">
                     <span style="font-size:1.12rem;font-weight:800;color:#FFF;letter-spacing:0.02em;">{company}</span>
-                    {priority_badge(priority)} {net_new_html}
+                    {status_html}
                 </div>
                 <div style="color:#6B7280;font-size:0.78rem;font-family:'Share Tech Mono',monospace;margin-bottom:0.4rem;">
                     {industry} &nbsp;|&nbsp;
@@ -97,7 +113,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-# ── Cuenta activa en sesión ───────────────────────────────────────────────────
+# ── Active account in session ─────────────────────────────────────────────────
 if current:
     st.markdown("---")
     st.markdown('<div class="kx-section-title">◈ Active Account — Current Session</div>', unsafe_allow_html=True)
@@ -106,6 +122,10 @@ if current:
     priority   = score_data.get("priority", "N/A")
     years      = current.get("years_inactive", 0)
     net_new    = score_data.get("is_net_new", False)
+
+    # Kill Switch banner for active account (UI-only override)
+    if years >= 5:
+        st.error("🔴 DISCARD / DO NOT PURSUE")
 
     ca, cb, cc = st.columns(3)
     with ca:
@@ -147,7 +167,7 @@ if current:
         else:
             st.info("The scraper.py module must return a 'factors' dict inside the score object to display the breakdown.")
 
-# ── Exportar reporte PDF ──────────────────────────────────────────────────────
+# ── Export PDF report ─────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown('<div class="kx-section-title">◈ Export Report</div>', unsafe_allow_html=True)
 
@@ -163,7 +183,7 @@ if current:
             st.download_button(
                 label="📄 Download PDF Report",
                 data=pdf_bytes,
-                file_name=f"KORHEX_{current.get('company_name','reporte').replace(' ','_')}.pdf",
+                file_name=f"KORHEX_{current.get('company_name','report').replace(' ','_')}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
@@ -178,7 +198,7 @@ if current:
             """, unsafe_allow_html=True)
 
     except ImportError:
-        st.warning("Instala reportlab: `pip install reportlab`")
+        st.warning("Install reportlab: `pip install reportlab`")
     except Exception as e:
         st.warning(f"Error generating PDF: {e}")
 else:

@@ -1,7 +1,8 @@
 """
-02_analysis.py — Los 6 Elementos del Análisis de Cuenta
-Propietario: Ingeniero 5 (UI)
+02_analysis.py — The 6 Elements of Account Analysis
+Owner: Engineer 5 (UI)
 """
+import time
 import streamlit as st
 from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
 
@@ -38,7 +39,7 @@ audit_notes = analysis.get("audit_notes") or "No audit notes available."
 tokens    = analysis.get("estimated_tokens", 0)
 ms        = analysis.get("processing_ms", 0)
 
-# ── Header de cuenta ──────────────────────────────────────────────────────────
+# ── Account header ─────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="kx-card kx-card-accent" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
     <div>
@@ -62,7 +63,7 @@ if not audit_ok:
 st.markdown("---")
 st.markdown('<div class="kx-section-title">◈ 6 Account Intelligence Blocks</div>', unsafe_allow_html=True)
 
-# ── 6 Secciones de análisis ───────────────────────────────────────────────────
+# ── 6 analysis sections ───────────────────────────────────────────────────────
 SECTIONS = [
     ("1. Company Snapshot & Strategy",  "strategy_background",  "🏢", "kx-card-accent"),
     ("2. Technology Environment",       "tech_environment",     "💻", "kx-card-blue"),
@@ -72,9 +73,9 @@ SECTIONS = [
     ("6. Competitive Context",          "competitive_context",  "🎯", "kx-card-blue"),
 ]
 
-# Intentar parsear secciones del texto del agente
+# Attempt to parse numbered sections from the agent output
 def extract_section(full_text: str, section_num: int) -> str:
-    """Extrae una sección numerada del output del agente."""
+    """Extract a numbered section from the agent output."""
     if not full_text:
         return ""
     lines = full_text.split("\n")
@@ -98,12 +99,9 @@ for idx, (title, web_key, icon, card_class) in enumerate(SECTIONS, 1):
 
     with st.expander(f"{icon} {title}", expanded=(idx <= 3)):
         if section_text:
-            st.markdown(f"""
-            <div class="kx-card {card_class}" style="margin-bottom:0.8rem;">
-                <div class="kx-section-title">◈ AI Agent Analysis</div>
-                <div style="font-size:0.9rem;line-height:1.7;color:#C9D1D9;white-space:pre-wrap;">{section_text}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            clean = ' '.join(section_text.split())
+            st.markdown(f'<div class="kx-card {card_class}" style="margin-bottom:0.8rem;"><div class="kx-section-title">◈ AI Agent Analysis</div><div style="font-size:0.9rem;line-height:1.7;color:#C9D1D9;">{clean}</div></div>', unsafe_allow_html=True)
+
         elif raw_snippets:
             st.markdown(f'<div class="kx-section-title">◈ Collected Web Sources</div>', unsafe_allow_html=True)
             for item in raw_snippets[:4]:
@@ -126,7 +124,7 @@ for idx, (title, web_key, icon, card_class) in enumerate(SECTIONS, 1):
             </div>
             """, unsafe_allow_html=True)
 
-# ── Notas de auditoría ────────────────────────────────────────────────────────
+# ── Audit notes ────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown('<div class="kx-section-title">◈ Compliance Agent Audit Report</div>', unsafe_allow_html=True)
 audit_color = "kx-card-accent" if audit_ok else "kx-card-red"

@@ -1,11 +1,11 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()  # Lee TAVILY_API_KEY (y otras llaves) desde el archivo .env
+load_dotenv()  # Reads TAVILY_API_KEY (and other keys) from the .env file
 
 import streamlit as st
 
-# 1. LECTURA DE LLAVES DE SEGURIDAD
-# Esto obliga al sistema a leer tu archivo .env antes de arrancar cualquier otra cosa
+# 1. SECURITY KEY LOADING
+# This forces the system to read your .env file before initializing anything else
 
 # Importaciones locales centralizadas para Pylance
 from modules.database import (
@@ -18,7 +18,7 @@ from modules.agents import run_dual_agent_analysis
 from modules.audit_logger import AuditLogger
 from modules.ui_theme import page_header
 
-# 2. Arrancamos la memoria de la base de datos local
+# 2. Initialize the local database memory
 initialize_database()
 
 st.set_page_config(page_title='KORHEX.AI', page_icon='🤖', layout='wide')
@@ -72,7 +72,7 @@ if analyze_btn:
     if not company_name or not company_url:
         st.warning('Please enter both Company Name and URL.')
     else:
-        # Guardar forzosamente los valores en st.session_state ANTES de cualquier operación
+        # Save values to session_state BEFORE any operations
         st.session_state['company_name']    = company_name
         st.session_state['company_url']     = company_url
         st.session_state['industry']        = industry
@@ -80,47 +80,47 @@ if analyze_btn:
 
         prog = st.progress(0, text='Checking local cache...')
 
-        # 3. Buscamos en la memoria (Base de Datos)
+        # 3. Look up the account in local database memory
         web_data = get_cached_account(company_name, company_url, industry)
         if web_data:
             st.toast('Loaded from local cache!', icon='⚡')
         else:
-            # Si no está, mandamos al Scraper de Tavily
+            # If not found, trigger the Tavily web scraper
             prog.progress(20, text='Searching public information...')
             with AuditLogger('SCRAPE', company_name) as log:
                 web_data = search_account(company_name, company_url, industry)
                 log.set_tokens(500)
             save_account_cache(company_name, company_url, industry, web_data)
-            
+
         prog.progress(40, text='Matching portfolio solutions...')
         products = get_relevant_products(industry, web_data)
-        
-        # 4. Verificamos si la IA ya hizo este análisis antes
+
+        # 4. Check if AI has already completed this analysis before
         cached = get_cached_analysis(company_name, company_url, industry, years_inactive)
         if cached:
             analysis = cached
             st.toast('Analysis loaded from memory!', icon='🧠')
         else:
-            # Ponemos a trabajar a la tarjeta gráfica local
+            # If not, execute the dual-agent workflow on the local GPU
             prog.progress(60, text='Running Dual-Agent Analysis...')
             with AuditLogger('DUAL_AGENT', company_name) as log:
                 analysis = run_dual_agent_analysis(company_name, web_data, products, years_inactive)
                 log.set_tokens(analysis.get('estimated_tokens', 1500))
-            
+
             save_analysis(
-                company_name, company_url, industry, years_inactive, 
-                analysis['research_analysis'], analysis['sales_speech'], 
+                company_name, company_url, industry, years_inactive,
+                analysis['research_analysis'], analysis['sales_speech'],
                 analysis['word_count'], analysis['audit_passed'], analysis['audit_notes']
             )
-            
+
         prog.progress(90, text='Saving to local database...')
         score = calculate_net_new_score(years_inactive, web_data)
         save_lead_score(
-            company_name, company_url, industry, 
+            company_name, company_url, industry,
             score['total_score'], score['priority'], years_inactive, score['is_net_new']
         )
-        
-        # Guardamos el resultado en la sesión
+
+        # Persist the consolidated result into the current session
         st.session_state['current_analysis'] = {
             'company_url':    company_url,
             'industry':       industry,
@@ -128,7 +128,7 @@ if analyze_btn:
             'analysis': analysis, 'products': products,
             'score': score, 'years_inactive': years_inactive
         }
-        
+
         prog.progress(100, text='Complete!')
         st.success('Analysis complete. Go to the tabs above.')
 else:
