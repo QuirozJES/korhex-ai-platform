@@ -117,7 +117,7 @@ if analyze_btn:
         save_lead_score(
             company_name, company_url, industry, 
             score['total_score'], score['priority'], years_inactive, score['is_net_new']
-        )
+        )   
         
         # Persist the consolidated result into the current session
         st.session_state['current_analysis'] = {
