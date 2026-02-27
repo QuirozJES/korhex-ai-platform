@@ -24,7 +24,7 @@ st.set_page_config(page_title="Privacy Audit · KORHEX.AI", page_icon="🔒", la
 
 page_header(
     title="🔒 Privacy & Cost Audit Log",
-    subtitle="Prueba irrefutable en tiempo real: 0 bytes de datos del cliente enviados a la nube."
+    subtitle="Irrefutable real-time proof: 0 bytes of client data sent to the cloud."
 )
 
 # ── Cargar datos del audit ────────────────────────────────────────────────────
@@ -32,10 +32,10 @@ if HAS_DB:
     try:
         data = get_privacy_dashboard_data()
     except Exception as e:
-        st.warning(f"No se pudo cargar el audit log: {e}")
+        st.warning(f"Could not load audit log: {e}")
         data = {}
 else:
-    st.warning("⚠️ modules/audit_logger.py o database.py no disponibles — mostrando datos de demostración.")
+    st.warning("⚠️ modules/audit_logger.py or database.py not available — showing demo data.")
     data = {
         "total_analyses": 0, "total_tokens_local": 0,
         "cost_saved_usd": 0.0, "bytes_to_cloud": 0,
@@ -47,7 +47,7 @@ st.markdown("""
 <div style="text-align:center;padding:2rem 0 1rem 0;">
     <div style="color:#6B7280;font-family:'Share Tech Mono',monospace;font-size:0.75rem;
                 letter-spacing:0.3em;text-transform:uppercase;margin-bottom:0.5rem;">
-        Bytes de datos del cliente enviados a APIs de nube
+        Client data bytes sent to cloud APIs
     </div>
     <div class="kx-audit-zero">0</div>
     <div style="color:#00FFB2;font-family:'Share Tech Mono',monospace;font-size:0.8rem;
@@ -58,60 +58,60 @@ st.markdown("""
 st.markdown("---")
 
 # ── KPIs del audit ────────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ KPIs de Privacidad</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ Privacy KPIs</div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.metric(
-        "Análisis Ejecutados",
+        "Analyses Executed",
         data.get("total_analyses", 0),
-        help="Total de empresas procesadas localmente"
+        help="Total companies processed locally"
     )
 with c2:
     tokens = data.get("total_tokens_local", 0)
     st.metric(
-        "Tokens Procesados Localmente",
+        "Tokens Processed Locally",
         f"{tokens:,}",
-        help="100% procesados en GPU local con Llama 3"
+        help="100% processed on local GPU with Llama 3"
     )
 with c3:
     cost = data.get("cost_saved_usd", 0.0)
     st.metric(
-        "Costo Equivalente Ahorrado",
+        "Equivalent Cost Saved",
         f"${cost:.4f}",
         delta="vs GPT-4 pricing ($0.03/1K tokens)",
-        help="Lo que hubiera costado en la nube"
+        help="What it would have cost in the cloud"
     )
 with c4:
     st.metric(
         "Privacy Score",
         f"{data.get('privacy_score', 100)}%",
-        delta="Máximo posible",
+        delta="Maximum possible",
         delta_color="off",
-        help="100% = ningún dato sensible a la nube"
+        help="100% = no sensitive data sent to cloud"
     )
 
 st.markdown("---")
 
 # ── Tabla de arquitectura de privacidad ───────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Prueba de Arquitectura — Zero Data Leakage</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ Architecture Proof — Zero Data Leakage</div>', unsafe_allow_html=True)
 
 ARCH_ROWS = [
-    ("Llama 3 LLM",           "GPU Local (RTX 5080)",     "NUNCA",       "green"),
-    ("SQLite Database",       "Disco Local",               "NUNCA",       "green"),
-    ("Streamlit UI",          "Red Local (localhost)",     "NUNCA",       "green"),
-    ("CrewAI Dual-Agent",     "RAM Local",                 "NUNCA",       "green"),
-    ("Datos del Cliente",     "Memoria Local",             "NUNCA",       "green"),
-    ("Tavily Web Search",     "API Pública",               "Solo URLs",   "yellow"),
+    ("Llama 3 LLM",           "Local GPU (RTX 5080)",      "NEVER",        "green"),
+    ("SQLite Database",       "Local Disk",                "NEVER",        "green"),
+    ("Streamlit UI",          "Local Network (localhost)", "NEVER",        "green"),
+    ("CrewAI Dual-Agent",     "Local RAM",                 "NEVER",        "green"),
+    ("Client Data",           "Local Memory",              "NEVER",        "green"),
+    ("Tavily Web Search",     "Public API",                "URLs only",    "yellow"),
 ]
 
 arch_data = [(c, l, cl) for c, l, cl, _ in ARCH_ROWS]
-arch_df = pd.DataFrame(arch_data, columns=["Componente", "Ubicación", "¿A la Nube?"])
+arch_df = pd.DataFrame(arch_data, columns=["Component", "Location", "To Cloud?"])
 st.dataframe(arch_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 
 # ── Event Log ─────────────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Event Log de Operaciones de IA</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ AI Operations Event Log</div>', unsafe_allow_html=True)
 
 if HAS_DB:
     try:
@@ -127,25 +127,25 @@ if HAS_DB:
             df["cloud_cost_usd"] = df["cloud_cost_usd"].apply(lambda x: f"${x:.6f}")
             df["processing_ms"]  = df["processing_ms"].apply(lambda x: f"{x}ms")
             df["bytes_to_cloud"] = "0"
-            df.columns = ["Timestamp","Evento","Empresa","Tokens","Costo Ahorrado","Tiempo","Bytes → Nube"]
+            df.columns = ["Timestamp","Event","Company","Tokens","Cost Saved","Time","Bytes → Cloud"]
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             no_data_state(
-                msg="No hay eventos registrados aún.",
-                hint="Ejecuta un análisis para comenzar a poblar el audit log."
+                msg="No events recorded yet.",
+                hint="Run an analysis to start populating the audit log."
             )
     except Exception as e:
-        st.warning(f"Error cargando event log: {e}")
+        st.warning(f"Error loading event log: {e}")
 else:
     no_data_state(
-        msg="Base de datos no disponible.",
-        hint="Verifica que database.py y audit_logger.py estén correctamente instalados."
+        msg="Database not available.",
+        hint="Verify that database.py and audit_logger.py are correctly installed."
     )
 
 st.markdown("---")
 
 # ── Comparación ROI ────────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Comparación de Costos — KORHEX.AI vs Competencia</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ Cost Comparison — KORHEX.AI vs Competition</div>', unsafe_allow_html=True)
 
 analyses = max(data.get("total_analyses", 1), 1)
 tokens   = max(data.get("total_tokens_local", 1500), 1500)
@@ -175,14 +175,14 @@ for i, (name, tech, cost, color) in enumerate(comparison):
             <div style="font-size:0.65rem;color:#6B7280;margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.1em;">
                 por {tokens:,} tokens
             </div>
-            {('<br><span class="kx-badge badge-green">GANADOR</span>' if is_winner else '')}
+            {('<br><span class="kx-badge badge-green">WINNER</span>' if is_winner else '')}
         </div>
         """, unsafe_allow_html=True)
 
 st.markdown(f"""
 <div style="text-align:center;margin-top:1rem;color:#6B7280;
             font-family:'Share Tech Mono',monospace;font-size:0.75rem;">
-    Cálculo basado en {tokens:,} tokens procesados &nbsp;|&nbsp;
+    Calculation based on {tokens:,} tokens processed &nbsp;|&nbsp;
     GPT-4: $0.03/1K tokens &nbsp;|&nbsp;
     KORHEX.AI: $0.00/1K tokens
 </div>

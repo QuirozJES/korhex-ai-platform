@@ -137,7 +137,7 @@ def cross_validate(web_data: dict, company_name: str) -> dict:
 
 def search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
 
-    client = TavilyClient(api_key=os.getenv('TAVILY_API_KEY'))
+    client = TavilyClient(api_key=os.environ.get('TAVILY_API_KEY'))
 
     results = {
         'company': company_name,

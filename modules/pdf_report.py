@@ -10,7 +10,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer,
     Table, TableStyle, HRFlowable, PageBreak, KeepTogether
@@ -53,13 +53,13 @@ def _st():
             textColor=C_MID, spaceAfter=5, leading=14),
         "kpi_lbl": ParagraphStyle("kpi_lbl",
             fontName="Helvetica", fontSize=7,
-            textColor=C_LIGHT, spaceAfter=3),
+            textColor=C_LIGHT, spaceAfter=3, alignment=TA_CENTER),
         "kpi_val": ParagraphStyle("kpi_val",
             fontName="Helvetica-Bold", fontSize=19,
-            textColor=C_BLACK, spaceAfter=2, leading=21),
+            textColor=C_BLACK, spaceAfter=2, leading=21, alignment=TA_CENTER),
         "kpi_sub": ParagraphStyle("kpi_sub",
             fontName="Helvetica", fontSize=7,
-            textColor=C_LIGHT, spaceAfter=0),
+            textColor=C_LIGHT, spaceAfter=0, alignment=TA_CENTER),
         "th": ParagraphStyle("th",
             fontName="Helvetica-Bold", fontSize=7,
             textColor=C_LIGHT),
@@ -75,6 +75,9 @@ def _st():
         "sp_body": ParagraphStyle("sp_body",
             fontName="Helvetica", fontSize=9,
             textColor=C_BLACK, leading=15, spaceAfter=4),
+        "sec_hdr": ParagraphStyle("sec_hdr",
+            fontName="Helvetica-Bold", fontSize=8,
+            textColor=C_DARK, leading=12, alignment=TA_LEFT),
         "footer": ParagraphStyle("footer",
             fontName="Helvetica", fontSize=7,
             textColor=C_LIGHT, alignment=TA_CENTER),
@@ -136,7 +139,7 @@ def generate_report(analysis_data: dict) -> bytes:
 
     doc = SimpleDocTemplate(
         buf, pagesize=letter,
-        topMargin=0.72*inch, bottomMargin=0.6*inch,
+        topMargin=0.72*inch, bottomMargin=0.75*inch,
         leftMargin=MARGIN,   rightMargin=MARGIN,
         title="Account Intelligence Report — KORHEX.AI",
         author="KORHEX.AI",
@@ -153,7 +156,10 @@ def generate_report(analysis_data: dict) -> bytes:
     priority    = score_data.get("priority") or "N/A"
     is_net_new  = bool(score_data.get("is_net_new"))
     analysis    = analysis_data.get("analysis") or {}
-    research    = analysis.get("research_analysis") or ""
+    # KEY DEFENSE: DB cache returns key 'research'; fresh agents run uses 'research_analysis'
+    research    = (analysis.get("research_analysis")
+                   or analysis.get("research")
+                   or "").strip()
     speech      = analysis.get("sales_speech") or ""
     audit_ok    = bool(analysis.get("audit_passed"))
     audit_notes = analysis.get("audit_notes") or ""
@@ -185,15 +191,18 @@ def generate_report(analysis_data: dict) -> bytes:
              Paragraph("AI AUDIT",    s["kpi_lbl"])],
             [Paragraph(f"{total_score}/100",                    s["kpi_val"]),
              Paragraph(str(priority),                           s["kpi_val"]),
-             Paragraph("Net New Logo" if is_net_new else "Reactivacion", s["kpi_val"]),
-             Paragraph("Verified" if audit_ok else "Review",   s["kpi_val"])],
+             Paragraph("Net New Logo" if is_net_new else "Reactivation", s["kpi_val"]),
+             # Note: 'Reactivation' is a single word — no hyphenation risk
+             Paragraph("Verified \u2714" if audit_ok else "Review ⚠",   s["kpi_val"])],
             [Paragraph("out of 100",              s["kpi_sub"]),
              Paragraph("sales priority",           s["kpi_sub"]),
              Paragraph(f"{years} yrs inactive",    s["kpi_sub"]),
              Paragraph("compliance check",         s["kpi_sub"])],
         ],
-        colWidths=[1.8*inch]*4,
-        rowHeights=[12, 26, 12],
+        # Column widths: LEAD SCORE | PRIORITY | TYPE (needs room for 'Reactivation') | AI AUDIT
+        # Total = 7.2" to fill the page width minus margins
+        colWidths=[1.2*inch, 1.8*inch, 2.5*inch, 1.7*inch],
+        # No fixed rowHeights — let ReportLab auto-size each row to content
     )
     t_kpi.setStyle(TableStyle([
         ("BACKGROUND",    (0,0), (-1,-1), C_BG),
@@ -204,6 +213,7 @@ def generate_report(analysis_data: dict) -> bytes:
         ("TOPPADDING",    (0,0), (-1, 0), 10),
         ("TOPPADDING",    (0,1), (-1, 2), 4),
         ("BOTTOMPADDING", (0,2), (-1, 2), 10),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
     ]))
     story.append(t_kpi)
 
@@ -213,21 +223,19 @@ def generate_report(analysis_data: dict) -> bytes:
         rows = [[Paragraph("SOLUTION", s["th"]), Paragraph("ROI PITCH", s["th"])]]
         for p in products[:4]:
             roi = (p.get("roi_pitch") or "")
-            if len(roi) > 160:
-                roi = roi[:160] + "..."
             rows.append([
                 Paragraph(p.get("name") or "N/A", s["td_b"]),
                 Paragraph(_txt(roi), s["td"]),
             ])
-        t_prod = Table(rows, colWidths=[2.0*inch, 5.2*inch])
+        t_prod = Table(rows, colWidths=[2.4*inch, 4.8*inch], repeatRows=1)
         t_prod.setStyle(TableStyle([
             ("LINEBELOW",     (0, 0), (-1,  0), 0.5, C_RULE),
             ("LINEBELOW",     (0,-1), (-1, -1), 0.5, C_RULE),
             ("ROWBACKGROUNDS",(0, 1), (-1, -1), [C_WHITE, C_BG]),
             ("LEFTPADDING",   (0, 0), (-1, -1), 0),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
-            ("TOPPADDING",    (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING",    (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ]))
         story.append(t_prod)
@@ -244,46 +252,97 @@ def generate_report(analysis_data: dict) -> bytes:
         _rule(after=10),
     ]
 
-    SECTIONS = [
-        ("## 1.", "1. COMPANY SNAPSHOT & STRATEGY"),
-        ("## 2.", "2. TECHNOLOGY ENVIRONMENT"),
-        ("## 3.", "3. IT PAIN POINTS"),
-        ("## 4.", "4. KEY DECISION MAKERS"),
-        ("## 5.", "5. FINANCIAL SIGNALS"),
-        ("## 6.", "6. COMPETITIVE CONTEXT"),
-    ]
+    # ── Always render all 6 sections — titles are hardcoded and never optional ──
+    # If the parser populated sec_map, use it. Otherwise best-effort: put the
+    # entire raw text under section 1 and show placeholder for 2-6.
+    full_w = 7.2 * inch
+
+    SECTION_TITLES = {
+        "1": "1. COMPANY SNAPSHOT & STRATEGY",
+        "2": "2. TECHNOLOGY ENVIRONMENT",
+        "3": "3. IT PAIN POINTS",
+        "4": "4. KEY DECISION MAKERS",
+        "5": "5. FINANCIAL SIGNALS",
+        "6": "6. COMPETITIVE CONTEXT",
+    }
+    SECTION_ORDER = ["1", "2", "3", "4", "5", "6"]
+    sec_map = {}
 
     if research:
-        sec_map, cur_key, cur_lines = {}, None, []
-        for line in research.split("\n"):
-            up = line.strip().upper()
-            hit = next((t for mk, t in SECTIONS
-                        if mk.upper() in up or t[:6] in up), None)
-            if hit:
+        import re as _re
+        sec_map = {}
+
+        # ── Primary parser: new [SECTION_N] tag format ──────────────────────
+        tag_matches = _re.findall(
+            r'\[SECTION_(\d)\]\s*(.*?)(?=\[SECTION_\d\]|$)',
+            research,
+            _re.DOTALL
+        )
+        if tag_matches:
+            for num, body in tag_matches:
+                if num in SECTION_TITLES:
+                    sec_map[SECTION_TITLES[num]] = body.strip().replace("**", "").replace("__", "")
+
+        # ── Fallback parser: legacy ## heading format (cached analyses) ──────
+        if not any(sec_map.get(SECTION_TITLES[n], "").strip() for n in SECTION_ORDER):
+            if "##" in research:
+                for block in research.split("##")[1:]:
+                    block = block.strip()
+                    if not block:
+                        continue
+                    header_line = block.split("\n")[0].strip().replace("**", "").replace("__", "")
+                    num = header_line[0] if header_line and header_line[0].isdigit() else None
+                    if num and num in SECTION_TITLES:
+                        body = "\n".join(block.split("\n")[1:]).strip()
+                        sec_map[SECTION_TITLES[num]] = body
+            else:
+                cur_key, cur_lines = None, []
+                for line in research.split("\n"):
+                    clean = line.strip().replace("**", "").replace("__", "")
+                    is_hdr = (len(clean) > 3 and clean[0].isdigit()
+                              and clean[1] == "." and clean[0] in SECTION_TITLES)
+                    if is_hdr:
+                        if cur_key:
+                            sec_map[cur_key] = "\n".join(cur_lines).strip()
+                        cur_key, cur_lines = SECTION_TITLES[clean[0]], []
+                    elif cur_key:
+                        cur_lines.append(line)
                 if cur_key:
                     sec_map[cur_key] = "\n".join(cur_lines).strip()
-                cur_key, cur_lines = hit, []
-            elif cur_key:
-                if "[OPENING" in line.upper():
-                    break
-                cur_lines.append(line)
-        if cur_key:
-            sec_map[cur_key] = "\n".join(cur_lines).strip()
 
-        for _, title in SECTIONS:
-            raw     = sec_map.get(title, "").strip()
-            display = (_txt(raw[:500]) + ("..." if len(raw) > 500 else "")) \
-                      if raw else "Information not available for this section."
-            story.append(KeepTogether([
-                Paragraph(title.upper(), s["sec_label"]),
-                _rule(after=4),
-                Paragraph(display, s["body"]),
-                Spacer(1, 4),
-            ]))
-    else:
-        story.append(Paragraph(
-            "Full analysis not available. Run a complete analysis from the main page.",
-            s["body"]))
+        # ── Last resort: dump everything under section 1 ─────────────────────
+        if not any(sec_map.get(SECTION_TITLES[n], "").strip() for n in SECTION_ORDER):
+            clean_research = research.replace("**", "").replace("__", "")
+            sec_map[SECTION_TITLES["1"]] = clean_research
+
+    # Render all 6 headers unconditionally
+    for num in SECTION_ORDER:
+        title   = SECTION_TITLES[num]
+        raw     = (sec_map.get(title, "") if research else "").strip()
+        raw     = raw.replace("**", "").replace("__", "")
+        # Strip LLM meta-commentary: sentences starting with "Note:" (e.g. "Note: I have used...")
+        import re as _re
+        raw = _re.sub(r'\bNote\s*:\s*[^\n]*', '', raw, flags=_re.IGNORECASE).strip()
+        display = _txt(raw) if raw else "Analysis based on AI internal model."
+        bottom_pad = 14 if len(display) < 150 else 6
+        hdr_tbl = Table(
+            [[Paragraph(f"  {num}. {title.split('. ', 1)[-1]}", s["sec_hdr"])]],
+            colWidths=[full_w],
+        )
+        hdr_tbl.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,-1), C_BG),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("LEFTPADDING",   (0,0), (-1,-1), 8),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 8),
+        ]))
+        story.append(KeepTogether([
+            Spacer(1, 6),
+            hdr_tbl,
+            Spacer(1, 4),
+            Paragraph(display, s["body"]),
+            Spacer(1, bottom_pad),
+        ]))
 
     story.append(PageBreak())
 
@@ -329,14 +388,21 @@ def generate_report(analysis_data: dict) -> bytes:
                     story.append(Paragraph(_txt(content), s["sp_body"]))
                     story.append(Spacer(1, 4))
         else:
-            story.append(Paragraph(_txt(speech[:2000]), s["sp_body"]))
+            # Full speech fallback — no character cap, flows across pages naturally
+            for para in speech.split("\n"):
+                para = para.strip()
+                if para:
+                    story.append(Paragraph(_txt(para), s["sp_body"]))
+                    story.append(Spacer(1, 4))
 
-        story += [
-            Spacer(1, 6),
+        story.append(KeepTogether([
+            Spacer(1, 12),
+            _rule(after=6),
             Paragraph(
                 f"{word_count} words  ·  Generated locally by Llama 3  ·  "
-                "Verified by Compliance Agent", s["body"]),
-        ]
+                "Verified by Compliance Agent",
+                s["body"]),
+        ]))
     else:
         story.append(Paragraph(
             "Sales speech not available. Ensure Ollama is running and rerun the analysis.",

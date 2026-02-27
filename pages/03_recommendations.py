@@ -9,22 +9,22 @@ from modules.ui_theme import page_header, badge, no_data_state, get_analysis, pa
 try:
     from modules.ui_theme import page_header, badge, no_data_state, score_bar, get_analysis
 except ImportError:
-    st.error("⚠️ modules/ui_theme.py no encontrado. Verifica que corres desde la carpeta raíz korhex-ai/")
+    st.error("⚠️ modules/ui_theme.py not found. Make sure you are running from the korhex-ai/ root folder.")
     st.stop()
 
-st.set_page_config(page_title="Recomendaciones · KORHEX.AI", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="Recommendations · KORHEX.AI", page_icon="🎯", layout="wide")
 
 page_header(
-    title="🎯 Recomendaciones de Portfolio",
-    subtitle="Productos seleccionados por RAG local — coincidencia semántica contra portfolio.json sin APIs externas."
+    title="🎯 Portfolio Recommendations",
+    subtitle="Products selected by local RAG — semantic matching against portfolio.json with no external APIs."
 )
 
 current = get_analysis()
 
 if not current:
     no_data_state(
-        msg="No hay análisis activo en esta sesión.",
-        hint="← Ejecuta un análisis desde la página principal primero."
+        msg="No active analysis in this session.",
+        hint="← Run an analysis from the main page first."
     )
     st.stop()
 
@@ -41,7 +41,7 @@ st.markdown(f"""
         <div style="color:#6B7280;font-size:0.78rem;font-family:'Share Tech Mono',monospace;">{industry}</div>
     </div>
     <div>
-        <span class="kx-badge badge-green">{len(products)} SOLUCIONES MATCH</span>
+        <span class="kx-badge badge-green">{len(products)} SOLUTION MATCHES</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -50,13 +50,13 @@ st.markdown("---")
 
 if not products:
     no_data_state(
-        msg="No se encontraron productos recomendados.",
-        hint="Verifica que modules/rag.py y data/portfolio.json estén correctamente configurados."
+        msg="No recommended products found.",
+        hint="Verify that modules/rag.py and data/portfolio.json are correctly configured."
     )
     st.stop()
 
 # ── Grid de productos ──────────────────────────────────────────────────────────
-st.markdown('<div class="kx-section-title">◈ Soluciones Recomendadas por RAG</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ RAG-Recommended Solutions</div>', unsafe_allow_html=True)
 
 for i, product in enumerate(products):
     name        = product.get("name", f"Producto {i+1}")
@@ -89,25 +89,25 @@ for i, product in enumerate(products):
 
     with col_side:
         if features:
-            st.markdown('<div class="kx-section-title" style="margin-top:0.5rem;">◈ Features Clave</div>', unsafe_allow_html=True)
+            st.markdown('<div class="kx-section-title" style="margin-top:0.5rem;">◈ Key Features</div>', unsafe_allow_html=True)
             for f in features[:5]:
                 st.markdown(f'<div style="font-size:0.78rem;color:#C9D1D9;padding:0.2rem 0;border-bottom:1px solid #1E2A35;">✓ {f}</div>', unsafe_allow_html=True)
         if pain_points:
-            st.markdown('<div class="kx-section-title" style="margin-top:0.8rem;">◈ Pain Points Cubiertos</div>', unsafe_allow_html=True)
+            st.markdown('<div class="kx-section-title" style="margin-top:0.8rem;">◈ Pain Points Addressed</div>', unsafe_allow_html=True)
             for pp in pain_points[:3]:
                 st.markdown(f'<div style="font-size:0.78rem;color:#FF3B5C;padding:0.2rem 0;">⚡ {pp}</div>', unsafe_allow_html=True)
         if not features and not pain_points:
             st.markdown("""
             <div style="color:#6B7280;font-size:0.75rem;font-family:monospace;margin-top:1rem;
                         padding:0.5rem;border:1px dashed #1E2A35;border-radius:4px;text-align:center;">
-                Agrega 'features' y 'pain_points_addressed' a portfolio.json
+                Add 'features' and 'pain_points_addressed' to portfolio.json
             </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Mapa Pain Point → Solución ────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="kx-section-title">◈ Dolor del Cliente → Solución Propuesta</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ Client Pain Point → Proposed Solution</div>', unsafe_allow_html=True)
 
 pain_raw = web_data.get("pain_points", []) or []
 pains    = [p.get("snippet", "") if isinstance(p, dict) else str(p) for p in pain_raw[:3]]
@@ -123,12 +123,12 @@ if pains and products:
             </div>
             <div style="text-align:center;color:#00FFB2;font-size:1.2rem;">→</div>
             <div class="kx-card kx-card-accent" style="margin:0;padding:0.8rem 1rem;">
-                <div style="font-size:0.7rem;color:#00FFB2;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem;">Solución</div>
+                <div style="font-size:0.7rem;color:#00FFB2;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem;">Solution</div>
                 <div style="font-size:0.82rem;font-weight:700;color:#FFF;">{product_match}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 else:
-    st.info("Ejecuta el análisis completo para ver el mapeo dolor → solución.")
+    st.info("Run a full analysis to view the pain point → solution mapping.")
     
 page_footer()

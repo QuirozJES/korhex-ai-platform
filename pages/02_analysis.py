@@ -8,22 +8,22 @@ from modules.ui_theme import page_header, badge, no_data_state, get_analysis, pa
 try:
     from modules.ui_theme import page_header, badge, no_data_state, get_analysis
 except ImportError:
-    st.error("⚠️ modules/ui_theme.py no encontrado.")
+    st.error("⚠️ modules/ui_theme.py not found.")
     st.stop()
 
-st.set_page_config(page_title="Análisis · KORHEX.AI", page_icon="🔬", layout="wide")
+st.set_page_config(page_title="Analysis · KORHEX.AI", page_icon="🔬", layout="wide")
 
 page_header(
     title="🔬 Account Intelligence Analysis",
-    subtitle="6 elementos de inteligencia B2B generados localmente por Llama 3 vía Ollama — sin envío de datos a la nube."
+    subtitle="6 B2B intelligence elements generated locally by Llama 3 via Ollama — zero data sent to the cloud."
 )
 
 current = get_analysis()
 
 if not current:
     no_data_state(
-        msg="No hay análisis activo en esta sesión.",
-        hint="← Ingresa una empresa en el sidebar de la página principal y presiona 'Execute Analysis'."
+        msg="No active analysis in this session.",
+        hint="← Enter a company in the main page sidebar and press 'Execute Analysis'."
     )
     st.stop()
 
@@ -34,7 +34,7 @@ industry  = current.get("web_data", {}).get("industry", "N/A")
 years     = current.get("years_inactive", 0)
 research  = analysis.get("research_analysis") or ""
 audit_ok  = analysis.get("audit_passed", False)
-audit_notes = analysis.get("audit_notes") or "Sin notas de auditoría."
+audit_notes = analysis.get("audit_notes") or "No audit notes available."
 tokens    = analysis.get("estimated_tokens", 0)
 ms        = analysis.get("processing_ms", 0)
 
@@ -44,7 +44,7 @@ st.markdown(f"""
     <div>
         <div style="font-size:1.18rem;font-weight:800;color:#FFF;letter-spacing:0.02em;">{company}</div>
         <div style="color:#6B7280;font-size:0.8rem;font-family:'Share Tech Mono',monospace;">
-            {industry} &nbsp;|&nbsp; {years} año(s) inactivo
+            {industry} &nbsp;|&nbsp; {years} yr(s) inactive
         </div>
     </div>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
@@ -57,10 +57,10 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if not audit_ok:
-    st.warning(f"⚠️ **Auditoría:** {audit_notes}")
+    st.warning(f"⚠️ **Audit:** {audit_notes}")
 
 st.markdown("---")
-st.markdown('<div class="kx-section-title">◈ 6 Bloques de Inteligencia de Cuenta</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ 6 Account Intelligence Blocks</div>', unsafe_allow_html=True)
 
 # ── 6 Secciones de análisis ───────────────────────────────────────────────────
 SECTIONS = [
@@ -100,12 +100,12 @@ for idx, (title, web_key, icon, card_class) in enumerate(SECTIONS, 1):
         if section_text:
             st.markdown(f"""
             <div class="kx-card {card_class}" style="margin-bottom:0.8rem;">
-                <div class="kx-section-title">◈ Análisis del Agente IA</div>
+                <div class="kx-section-title">◈ AI Agent Analysis</div>
                 <div style="font-size:0.9rem;line-height:1.7;color:#C9D1D9;white-space:pre-wrap;">{section_text}</div>
             </div>
             """, unsafe_allow_html=True)
         elif raw_snippets:
-            st.markdown(f'<div class="kx-section-title">◈ Fuentes Web Recopiladas</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kx-section-title">◈ Collected Web Sources</div>', unsafe_allow_html=True)
             for item in raw_snippets[:4]:
                 if isinstance(item, dict):
                     snippet = item.get("snippet") or item.get("title") or item.get("content") or str(item)
@@ -122,13 +122,13 @@ for idx, (title, web_key, icon, card_class) in enumerate(SECTIONS, 1):
         else:
             st.markdown(f"""
             <div style="color:#6B7280;font-size:0.85rem;font-family:'Share Tech Mono',monospace;padding:1rem 0;">
-                Sin datos disponibles para esta sección. El scraper no encontró información de '{web_key}'.
+                No data available for this section. The scraper found no information for '{web_key}'.
             </div>
             """, unsafe_allow_html=True)
 
 # ── Notas de auditoría ────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="kx-section-title">◈ Reporte de Auditoría del Compliance Agent</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title">◈ Compliance Agent Audit Report</div>', unsafe_allow_html=True)
 audit_color = "kx-card-accent" if audit_ok else "kx-card-red"
 st.markdown(f"""
 <div class="kx-card {audit_color}">
@@ -136,7 +136,7 @@ st.markdown(f"""
         <div style="font-size:1.5rem;">{"✅" if audit_ok else "⚠️"}</div>
         <div>
             <div style="font-weight:700;color:#FFF;">
-                {"Análisis verificado — sin alucinaciones detectadas" if audit_ok else "Se detectaron posibles imprecisiones"}
+                {"Analysis verified — no hallucinations detected" if audit_ok else "Possible inaccuracies detected"}
             </div>
             <div style="color:#C9D1D9;font-size:0.85rem;margin-top:0.3rem;">{audit_notes}</div>
         </div>
