@@ -68,12 +68,12 @@ def initialize_database():
         conn.execute('CREATE INDEX IF NOT EXISTS idx_key ON account_cache (company_key)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_score ON lead_scores (lead_score DESC)')
 
-def make_company_key(name: str, url: str) -> str:
-    normalized = f'{name.lower().strip()}:{url.lower().strip()}'
+def make_company_key(name: str, url: str, industry: str = '') -> str:
+    normalized = f'{name.lower().strip()}:{url.lower().strip()}:{industry.lower().strip()}'
     return hashlib.md5(normalized.encode()).hexdigest()
 
-def get_cached_account(name: str, url: str) -> dict | None:
-    key = make_company_key(name, url)
+def get_cached_account(name: str, url: str, industry: str = '') -> dict | None:
+    key = make_company_key(name, url, industry)
     with get_connection() as conn:
         row = conn.execute('''SELECT raw_data FROM account_cache 
                               WHERE company_key=? AND expires_at>CURRENT_TIMESTAMP''', (key,)).fetchone()
@@ -83,7 +83,7 @@ def get_cached_account(name: str, url: str) -> dict | None:
     return None
 
 def save_account_cache(name: str, url: str, industry: str, data: dict):
-    key = make_company_key(name, url)
+    key = make_company_key(name, url, industry)  # aqui el cambio chavos
     expires = datetime.now() + timedelta(hours=CACHE_TTL_HOURS)
     with get_connection() as conn:
         conn.execute('''INSERT INTO account_cache 
@@ -93,8 +93,8 @@ def save_account_cache(name: str, url: str, industry: str, data: dict):
                         raw_data=excluded.raw_data, expires_at=excluded.expires_at, hit_count=0''',
                      (key, name, url, industry, json.dumps(data), expires))
 
-def save_analysis(name, url, years, research, speech, wc, passed, notes):
-    key = make_company_key(name, url)
+def save_analysis(name, url, industry, years, research, speech, wc, passed, notes):
+    key = make_company_key(name, url, industry) 
     with get_connection() as conn:
         conn.execute('''INSERT INTO analysis_cache 
                         (company_key, years_inactive, research, sales_speech, word_count, audit_passed, audit_notes) 
@@ -105,8 +105,8 @@ def save_analysis(name, url, years, research, speech, wc, passed, notes):
                         audit_notes=excluded.audit_notes''',
                      (key, years, research, speech, wc, int(passed), notes))
 
-def get_cached_analysis(name, url, years) -> dict | None:
-    key = make_company_key(name, url)
+def get_cached_analysis(name, url, industry, years) -> dict | None:
+    key = make_company_key(name, url, industry)  
     with get_connection() as conn:
         row = conn.execute('''SELECT research, sales_speech, word_count, audit_passed, audit_notes 
                               FROM analysis_cache WHERE company_key=? AND years_inactive=?''', (key, years)).fetchone()

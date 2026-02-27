@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 # Esto obliga al sistema a leer tu archivo .env antes de arrancar cualquier otra cosa
 load_dotenv()
 
+<<<<<<< HEAD
 # Importaciones locales centralizadas para Pylance
 from modules.database import (
     initialize_database, get_cached_account, save_account_cache, 
@@ -14,6 +15,10 @@ from modules.scraper import search_account, calculate_net_new_score
 from modules.rag import get_relevant_products
 from modules.agents import run_dual_agent_analysis
 from modules.audit_logger import AuditLogger
+=======
+from modules.database import initialize_database
+from modules.ui_theme import page_header
+>>>>>>> main
 
 # 2. Arrancamos la memoria de la base de datos local
 initialize_database()
@@ -23,39 +28,78 @@ st.set_page_config(page_title='KORHEX.AI', page_icon='🤖', layout='wide')
 if 'current_analysis' not in st.session_state:
     st.session_state['current_analysis'] = None
 
-st.title('KORHEX.AI Account Intelligence Platform')
+st.markdown("""
+<div style="position:relative; display:inline-block; cursor:default;">
+    <h1 style="font-family:'Share Tech Mono',monospace; color:#00FFB2;
+               text-shadow: 0 0 8px #00FFB2, 0 0 20px #00FFB260;
+               margin-bottom:0; font-size:2rem; letter-spacing:0.05em;">
+        KORHEX.AI Account Intelligence Platform
+    </h1>
+    <div class="kx-easter-egg">
+        ▸ Zuany · Reyes · Quiroz · Herrera · Morales ◂
+    </div>
+</div>
+
+<style>
+.kx-easter-egg {
+    position: absolute;
+    top: -1.4rem;
+    left: 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.25em;
+    color: transparent;
+    transition: color 0.6s ease, text-shadow 0.6s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+div:hover > .kx-easter-egg {
+    color: #00FFB280;
+    text-shadow: 0 0 10px #00FFB250;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.caption('Local AI | Zero Data Leakage | Dual-Agent | SQLite Memory')
 
 with st.sidebar:
-    st.header('Account Input')
+    st.markdown('<div class="kx-section-title">◈ Account Input</div>', unsafe_allow_html=True)
     company_url = st.text_input('Company URL', placeholder='https://example.com')
     company_name = st.text_input('Company Name', placeholder='e.g. Toyota')
     industry = st.selectbox('Industry', ['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Energy', 'Telecommunications'])
     years_inactive = st.slider('Years since last purchase', 0, 10, 3)
     analyze_btn = st.button('Execute Analysis', type='primary', use_container_width=True)
-    
-    st.divider()
-    with st.expander('Solution Viability'):
-        st.markdown('''
-        * No commercial AI licenses required
-        * Open-source tools only (Ollama, CrewAI, Streamlit, SQLite)
-        * Simulated/example accounts = no real client data
-        * Full data confidentiality = 0 bytes to cloud
-        ''')
 
 if analyze_btn:
     if not company_name or not company_url:
         st.warning('Please enter both Company Name and URL.')
     else:
+<<<<<<< HEAD
         # Guardar forzosamente los valores en st.session_state
         st.session_state['company_url'] = company_url
         st.session_state['company_name'] = company_name
         st.session_state['industry'] = industry
+=======
+        # ── Guardar variables en session_state ANTES de cualquier operación ──
+        st.session_state['company_name']    = company_name
+        st.session_state['company_url']     = company_url
+        st.session_state['industry']        = industry
+        st.session_state['years_inactive']  = years_inactive
+
+        from modules.scraper import search_account, calculate_net_new_score
+        from modules.rag import get_relevant_products
+        from modules.agents import run_dual_agent_analysis
+        from modules.audit_logger import AuditLogger
+        from modules.database import (
+            get_cached_account, save_account_cache, 
+            get_cached_analysis, save_analysis, save_lead_score
+        )
+>>>>>>> main
 
         prog = st.progress(0, text='Checking local cache...')
         
         # 3. Buscamos en la memoria (Base de Datos)
-        web_data = get_cached_account(company_name, company_url)
+        web_data = get_cached_account(company_name, company_url, industry)
         if web_data:
             st.toast('Loaded from local cache!', icon='⚡')
         else:
@@ -70,19 +114,19 @@ if analyze_btn:
         products = get_relevant_products(industry, web_data)
         
         # 4. Verificamos si la IA ya hizo este análisis antes
-        cached = get_cached_analysis(company_name, company_url, years_inactive)
+        cached = get_cached_analysis(company_name, company_url, industry, years_inactive)
         if cached:
             analysis = cached
             st.toast('Analysis loaded from memory!', icon='🧠')
         else:
-            # Si no, ponemos a trabajar a la tarjeta gráfica local
+            # Ponemos a trabajar a la tarjeta gráfica local
             prog.progress(60, text='Running Dual-Agent Analysis...')
             with AuditLogger('DUAL_AGENT', company_name) as log:
                 analysis = run_dual_agent_analysis(company_name, web_data, products, years_inactive)
                 log.set_tokens(analysis.get('estimated_tokens', 1500))
             
             save_analysis(
-                company_name, company_url, years_inactive, 
+                company_name, company_url, industry, years_inactive, 
                 analysis['research_analysis'], analysis['sales_speech'], 
                 analysis['word_count'], analysis['audit_passed'], analysis['audit_notes']
             )
@@ -96,6 +140,8 @@ if analyze_btn:
         
         # Guardamos el resultado en la sesión
         st.session_state['current_analysis'] = {
+            'company_url':    company_url,
+            'industry':       industry,
             'company_name': company_name, 'web_data': web_data,
             'analysis': analysis, 'products': products,
             'score': score, 'years_inactive': years_inactive
