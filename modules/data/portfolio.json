@@ -1,5 +1,5 @@
 {
-  "products": [
+  "products": [ 
     {
       "id": "P001",
       "name": "Dell PowerEdge R750",
@@ -164,9 +164,107 @@
         "regulatorio",
         "compliance"
       ],
+
       "evidence_url": "https://www.dell.com/en-us/dt/data-protection/powerprotect-data-manager.htm",
       "roi_pitch": "Reduce el tiempo de recuperacion ante incidentes (RTO) hasta 4x versus soluciones tradicionales, protegiendo la continuidad del negocio y evitando perdidas por tiempo de inactividad que promedian $5,600 USD por minuto en empresas enterprise.",
       "pain_solved": "Elimina la vulnerabilidad ante ataques de ransomware y perdida de datos criticos, cumpliendo regulaciones de proteccion de datos como GDPR, HIPAA y PCI-DSS."
-    }
-  ]
+      
+    },
+      {
+        "id": "P007",
+        "name": "Corporate VPN SecOps Guard",
+        "category": "Cybersecurity",
+        "description": "Solución de seguridad perimetral empresarial con VPN de grado industrial, monitoreo SOC 24/7, detección de intrusiones (IDS/IPS) y segmentación de red para entornos OT/IT críticos. Diseñada para infraestructura industrial, refinerías y plantas de manufactura con sistemas SCADA y legacy.",
+        "use_cases": [
+          "protección de infraestructura crítica",
+          "seguridad OT/IT para refinerías",
+          "monitoreo SOC industrial",
+          "protección de sistemas SCADA",
+          "cumplimiento regulatorio energético",
+          "segmentación de red industrial"
+        ],
+        "keywords": [
+          "cybersecurity",
+          "ciberseguridad",
+          "VPN",
+          "seguridad",
+          "refinería",
+          "energy",
+          "energía",
+          "manufacturing",
+          "manufactura",
+          "SCADA",
+          "OT",
+          "industrial",
+          "SOC",
+          "IDS",
+          "firewall",
+          "infraestructura crítica"
+  ],
+  "evidence_url": "https://www.dell.com/en-us/dt/solutions/security/index.htm",
+  "roi_pitch": "Reduce el riesgo de incidentes de ciberseguridad en plantas industriales hasta un 80%, evitando pérdidas que promedian $4.7M USD por ataque en el sector energético.",
+  "pain_solved": "Protege infraestructura OT/IT crítica de refinerías y plantas manufactureras ante ataques de ransomware, accesos no autorizados y vulnerabilidades en sistemas SCADA legacy."
+},
+{
+  "id": "P008",
+  "name": "Dell PowerEdge R760 for AI Workloads",
+  "category": "Servers",
+  "description": "Servidor rack 2U optimizado para cargas de trabajo de IA, machine learning y analytics de alto rendimiento. Soporta GPUs NVIDIA A100/H100, NVMe de alta velocidad y conectividad InfiniBand para clusters de cómputo distribuido.",
+  "use_cases": [
+    "entrenamiento de modelos de IA",
+    "analytics en tiempo real",
+    "procesamiento de datos masivos",
+    "clusters de HPC",
+    "inferencia de machine learning"
+  ],
+  "keywords": [
+    "AI",
+    "inteligencia artificial",
+    "machine learning",
+    "HPC",
+    "GPU",
+    "analytics",
+    "data science",
+    "servidores",
+    "servers",
+    "NVIDIA",
+    "inferencia",
+    "deep learning"
+  ],
+  "evidence_url": "https://www.dell.com/en-us/shop/dell-poweredge-servers/poweredge-r760/spd/poweredge-r760",
+  "roi_pitch": "Acelera el time-to-insight hasta 5x versus servidores estándar, reduciendo el costo de infraestructura de IA en comparación con soluciones cloud equivalentes.",
+  "pain_solved": "Elimina la dependencia de cloud público para cargas de IA sensibles, manteniendo datos críticos on-premise con rendimiento superior y costo predecible."
+},
+{
+  "id": "P009",
+  "name": "Dell APEX Data Storage Services",
+  "category": "Storage",
+  "description": "Almacenamiento empresarial como servicio (STaaS) con modelo de consumo flexible, escalabilidad automática y gestión unificada para entornos multicloud e híbridos. Incluye deduplicación, compresión y cifrado integrados.",
+  "use_cases": [
+    "almacenamiento como servicio",
+    "modernización de storage",
+    "entornos multicloud",
+    "reducción de costos de almacenamiento",
+    "escalabilidad bajo demanda",
+    "backup y recuperación empresarial"
+  ],
+  "keywords": [
+    "storage as a service",
+    "STaaS",
+    "almacenamiento",
+    "storage",
+    "multicloud",
+    "híbrido",
+    "hybrid",
+    "escalabilidad",
+    "OPEX",
+    "as-a-service",
+    "datos",
+    "cifrado"
+  ],
+  "evidence_url": "https://www.dell.com/en-us/dt/apex/apex-data-storage-services.htm",
+  "roi_pitch": "Convierte el gasto de almacenamiento de CAPEX a OPEX con ahorro promedio del 40% versus compra tradicional, con escalabilidad inmediata sin sobreaprovisionamiento.",
+  "pain_solved": "Elimina el sobreaprovisionamiento de storage y los ciclos de refresh de hardware cada 3-5 años, ofreciendo capacidad elástica alineada al crecimiento real del negocio."
+  }
+]
 }

@@ -107,7 +107,7 @@ if analyze_btn:
                 log.set_tokens(analysis.get('estimated_tokens', 1500))
             
             save_analysis(
-                company_name, company_url, years_inactive, 
+                company_name, company_url, industry, years_inactive, 
                 analysis['research_analysis'], analysis['sales_speech'], 
                 analysis['word_count'], analysis['audit_passed'], analysis['audit_notes']
             )

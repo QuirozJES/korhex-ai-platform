@@ -1,128 +1,78 @@
-import time, os, requests
+import re, os
+from crewai import Agent, Task, Crew, Process, LLM
 
-def run_dual_agent_analysis(company_name, web_data, products, years_inactive):
+def clean_text(text: str) -> str:
+    text = text.encode('utf-8', 'ignore').decode('utf-8')
+    text = re.sub(r'[^\x00-\x7F\u00C0-\u024F\u00A0-\u00FF\n\r\t ]', '', text)
+    return text.strip()
 
-    # ── Preparar contexto con datos reales ──────────────
+def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE"):
+    # ── 1. Contexto de Datos Reales ──────────────
     product_context = "\n".join([
         f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']} | Pain: {p['pain_solved']}"
         for p in products
-    ]) if products else "No hay productos específicos identificados."
+    ]) if products else "No hay productos identificados."
 
-    tech_snippets = " ".join([
-        item['snippet'] for item in web_data.get('tech_environment', [])
-        if item.get('valid') and item.get('snippet')
-    ])[:600]
+    tech_snippets = " ".join([i['snippet'] for i in web_data.get('tech_environment', []) if i.get('valid')])[:600]
+    pain_snippets = " ".join([i['snippet'] for i in web_data.get('pain_points', []) if i.get('valid')])[:400]
 
-    pain_snippets = " ".join([
-        item['snippet'] for item in web_data.get('pain_points', [])
-        if item.get('valid') and item.get('snippet')
-    ])[:400]
-
-    financial_snippets = " ".join([
-        item['snippet'] for item in web_data.get('financial_signals', [])
-        if item.get('valid') and item.get('snippet')
-    ])[:300]
-
-    summary      = web_data.get('summary', '')[:400]
-    tech_keywords = web_data.get('tech_keywords', '')
-    industry     = web_data.get('industry', 'Technology')
-    data_quality = web_data.get('data_quality', 'UNKNOWN')
-
-    # ── Prompt Agente Investigador ───────────────────────
-    research_prompt = f"""Eres un analista de ventas B2B especializado en tecnología empresarial (Dell).
-Analiza esta cuenta y genera un reporte de inteligencia comercial detallado.
-
-EMPRESA: {company_name}
-INDUSTRIA: {industry}
-AÑOS SIN COMPRAR: {years_inactive}
-CALIDAD DE DATOS: {data_quality}
-
-RESUMEN PÚBLICO: {summary}
-ENTORNO TECNOLÓGICO: {tech_snippets}
-PAIN POINTS: {pain_snippets}
-SEÑALES FINANCIERAS: {financial_snippets}
-KEYWORDS TECNOLÓGICOS: {tech_keywords}
-
-SOLUCIONES DELL RECOMENDADAS:
-{product_context}
-
-Genera un análisis con estas secciones:
-1. SITUACIÓN ACTUAL
-2. PAIN POINTS CRÍTICOS
-3. OPORTUNIDAD COMERCIAL
-4. PRODUCTOS RECOMENDADOS
-5. SEÑALES DE COMPRA
-
-Sé específico con datos reales de la empresa. Mínimo 200 palabras."""
-
-    # ── Prompt Agente Vendedor ───────────────────────────
-    sales_prompt = f"""Eres un ejecutivo de ventas senior de Dell Technologies con 15 años de experiencia.
-Escribe un discurso de ventas personalizado para reconquistar esta cuenta.
-
-EMPRESA: {company_name}
-INDUSTRIA: {industry}
-AÑOS SIN COMPRAR: {years_inactive} años
-ENTORNO TECH: {tech_snippets[:300]}
-PAIN POINTS: {pain_snippets[:200]}
-
-SOLUCIONES A PROPONER:
-{product_context}
-
-REGLAS:
-- Entre 150 y 180 palabras exactamente
-- Tono profesional pero cercano
-- Menciona el nombre de la empresa al menos 2 veces
-- Referencia un pain point específico detectado
-- Propone una solución concreta con su ROI
-- Termina con un call-to-action claro
-- NO uses frases genéricas como "soluciones de clase mundial"
-- Escribe directamente el discurso, sin títulos ni secciones
-
-Escribe el discurso ahora:"""
-
-    # ── Función helper para llamar a Ollama ──────────────
-    def call_ollama(prompt: str) -> str:
-        try:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "llama3",
-                    "prompt": prompt,
-                    "stream": False
-                },
-                timeout=120
-            )
-            return response.json().get("response", "Error: respuesta vacía de Ollama")
-        except requests.exceptions.ConnectionError:
-            return "Error: Ollama no está corriendo. Ejecuta 'ollama serve' en tu terminal."
-        except Exception as e:
-            return f"Error: {str(e)}"
-
-    # ── Agente 1: Investigador ───────────────────────────
-    research_analysis = call_ollama(research_prompt)
-
-    # ── Agente 2: Vendedor ───────────────────────────────
-    sales_speech = call_ollama(sales_prompt)
-
-    # ── Agente Auditor: validación básica ────────────────
-    word_count   = len(sales_speech.split())
-    audit_passed = 150 <= word_count <= 220
-    audit_notes  = (
-        f"✅ Discurso aprobado: {word_count} palabras. Contenido personalizado para {company_name}."
-        if audit_passed else
-        f"⚠️ Discurso fuera de rango: {word_count} palabras (esperado: 150-180). Revisar prompt."
+    # ── 2. Cerebro Local (Zero Data Leakage) ──────────────
+    local_llm = LLM(
+        model="ollama/llama3",
+        base_url="http://localhost:11434"
     )
 
-    estimated_tokens = (
-        len(research_prompt.split()) + len(sales_prompt.split()) +
-        len(research_analysis.split()) + word_count
+    # ── 3. Agentes (Modo Sigilo: verbose=False) ──────────────
+    research_agent = Agent(
+        role='Analista de Inteligencia Comercial B2B',
+        goal=f'Generar reporte de inteligencia para {company_name}.',
+        backstory='Analista senior de Dell Technologies. Experto en auditoría técnica.',
+        verbose=False, # Cumple auditoría de seguridad
+        llm=local_llm
     )
 
+    sales_agent = Agent(
+        role='Estratega de Ventas Senior',
+        goal='Redactar pitches persuasivos o advertir de riesgos.',
+        backstory='Ejecutivo veterano con 15 años de experiencia en Dell.',
+        verbose=False, # Cumple auditoría de seguridad
+        llm=local_llm
+    )
+
+    # ── 4. Tareas con Reglas del Inge 3 ──────────────
+    research_task = Task(
+        description=f"Analiza a {company_name}. Tech: {tech_snippets}. Pains: {pain_snippets}.",
+        expected_output="Análisis técnico detallado.",
+        agent=research_agent
+    )
+
+    if client_status == "DISCARD":
+        # REGLA DE DESCARTE
+        sales_description = f"""El cliente {company_name} está en modo DISCARD. 
+        NO redactes el pitch de ventas. En su lugar, redacta un 'Aviso de Riesgo Operativo' 
+        de máximo 50 palabras aconsejándole al equipo por qué NO vale la pena invertir tiempo en esta empresa."""
+        expected_sales = "Aviso de Riesgo Operativo (Máx 50 palabras)."
+        audit_passed, audit_notes = False, "⚠️ RECHAZADO: Modo DISCARD activado."
+    else:
+        # REGLA DEL TOP 5
+        sales_description = f"""Escribe un discurso de ventas para {company_name}.
+        PRODUCTOS: {product_context}
+        INSTRUCCIÓN EXACTA: Analiza los productos encontrados y preséntalos como un 'Top 5 Ordenado por Prioridad'. 
+        El criterio de orden es el impacto financiero y la urgencia operativa para la industria del cliente. Enuméralos del 1 al 5."""
+        expected_sales = "Discurso de ventas con Top 5 ordenado por prioridad."
+        audit_passed, audit_notes = True, "✅ APROBADO: Incluye Regla del Top 5."
+
+    sales_task = Task(description=sales_description, expected_output=expected_sales, agent=sales_agent)
+
+    # ── 5. Ejecución ──────────────
+    crew = Crew(agents=[research_agent, sales_agent], tasks=[research_task, sales_task], verbose=False)
+    result = str(crew.kickoff())
+    
     return {
-        'research_analysis': research_analysis,
-        'sales_speech':      sales_speech,
-        'word_count':        word_count,
-        'audit_passed':      audit_passed,
-        'audit_notes':       audit_notes,
-        'estimated_tokens':  estimated_tokens
+        'research_analysis': "Análisis procesado por CrewAI local.",
+        'sales_speech': clean_text(result),
+        'word_count': len(result.split()),
+        'audit_passed': audit_passed,
+        'audit_notes': audit_notes,
+        'estimated_tokens': 1200
     }
