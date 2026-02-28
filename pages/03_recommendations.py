@@ -57,7 +57,6 @@ if not products:
     )
     st.stop()
 
-# ── Grid de productos ──────────────────────────────────────────────────────────
 st.markdown('<div class="kx-section-title">◈ RAG-Recommended Solutions</div>', unsafe_allow_html=True)
 
 import html as _html  # kept for &amp; in static HTML only

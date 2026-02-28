@@ -141,7 +141,7 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxx
 
 ```
 korhex-ai/
-├── app.py                          # Entry point + input sidebar
+├── Home.py                         # Entry point + input sidebar
 ├── .streamlit/
 │   └── config.toml                 # Dark theme config
 ├── modules/
@@ -154,11 +154,11 @@ korhex-ai/
 │   └── pdf_report.py               # Executive report generator
 ├── streamlit_app/
 │   └── pages/
-│       ├── 01_dashboard.py         # Lead Intelligence Dashboard
-│       ├── 02_analysis.py          # 6-Element Analysis
-│       ├── 03_recommendations.py   # Portfolio RAG
-│       ├── 04_speech.py            # Sales Speech Generator
-│       └── 05_privacy_audit.py     # Privacy & Cost Audit
+│       ├── 01_Dashboard.py         # Lead Intelligence Dashboard
+│       ├── 02_Analysis.py          # 6-Element Analysis
+│       ├── 03_Recommendations.py   # Portfolio RAG
+│       ├── 04_Speech.py            # Sales Speech Generator
+│       └── 05_Privacy_audit.py     # Privacy & Cost Audit
 └── data/
     └── portfolio.json              # Product catalog
 ```

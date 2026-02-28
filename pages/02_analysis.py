@@ -1,18 +1,54 @@
 """
-02_analysis.py — The 6 Elements of Account Analysis
+02_analysis.py — The 6 Elements of Account Analysis (REMASTERED)
 Owner: Engineer 5 (UI)
 """
 import time
 import streamlit as st
+import re
+import html
 from modules.ui_theme import page_header, badge, no_data_state, get_analysis, page_footer
 
-try:
-    from modules.ui_theme import page_header, badge, no_data_state, get_analysis
-except ImportError:
-    st.error("⚠️ modules/ui_theme.py not found.")
-    st.stop()
+# 1. Función de limpieza "Escudo" para evitar títulos gigantes y basura de Markdown
+def clean_ai_text(text):
+    if not text:
+        return ""
+    # Eliminamos símbolos de Markdown (#) al inicio de las líneas para evitar saltos de tamaño
+    text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
+    # Limpiamos asteriscos triples o dobles si son excesivos
+    text = text.replace('***', '**')
+    # Escapamos HTML básico para evitar que caracteres especiales rompan el diseño
+    return html.escape(text).strip()
 
 st.set_page_config(page_title="Analysis · KORHEX.AI", page_icon="🔬", layout="wide")
+
+# 2. Inyección de CSS para forzar el ancho total y el estilo de las tarjetas
+st.markdown("""
+    <style>
+    /* Eliminar márgenes laterales de Streamlit para llegar al borde derecho */
+    .block-container {
+        max-width: 100% !important;
+        padding-left: 2rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* Estilo para las tarjetas de análisis de ancho total */
+    .kx-analysis-card {
+        width: 100% !important;
+        background: rgba(10, 20, 28, 0.4);
+        border: 1px solid rgba(0, 255, 178, 0.15);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+    }
+    
+    .kx-analysis-card:hover {
+        border-color: rgba(0, 255, 178, 0.5);
+        box-shadow: 0 0 15px rgba(0, 255, 178, 0.1);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 page_header(
     title="🔬 Account Intelligence Analysis",
@@ -39,29 +75,25 @@ audit_notes = analysis.get("audit_notes") or "No audit notes available."
 tokens    = analysis.get("estimated_tokens", 0)
 ms        = analysis.get("processing_ms", 0)
 
-# ── Account header ─────────────────────────────────────────────────────────────
+# ── Account header (Full Width) ──────────────────────────────────────────────
 st.markdown(f"""
-<div class="kx-card kx-card-accent" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+<div class="kx-card kx-card-accent" style="width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom: 2rem;">
     <div>
-        <div style="font-size:1.18rem;font-weight:800;color:#FFF;letter-spacing:0.02em;">{company}</div>
-        <div style="color:#6B7280;font-size:0.8rem;font-family:'Share Tech Mono',monospace;">
+        <div style="font-size:1.3rem; font-weight:800; color:#00FFB2; text-shadow: 0 0 10px rgba(0,255,178,0.3);">{company}</div>
+        <div style="color:#6B7280; font-size:0.85rem; font-family:'Share Tech Mono',monospace;">
             {industry} &nbsp;|&nbsp; {years} yr(s) inactive
         </div>
     </div>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+    <div style="display:flex; gap:1rem; align-items:center;">
         {'<span class="kx-badge badge-green">✓ AUDIT PASSED</span>' if audit_ok else '<span class="kx-badge badge-red">⚠ AUDIT ISSUES</span>'}
-        <span style="font-family:\'Share Tech Mono\',monospace;font-size:0.75rem;color:#6B7280;">
+        <span style="font-family:\'Share Tech Mono\',monospace; font-size:0.8rem; color:#6B7280;">
             {tokens:,} tokens &nbsp;|&nbsp; {ms:,}ms
         </span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-if not audit_ok:
-    st.warning(f"⚠️ **Audit:** {audit_notes}")
-
-st.markdown("---")
-st.markdown('<div class="kx-section-title">◈ 6 Account Intelligence Blocks</div>', unsafe_allow_html=True)
+st.markdown('<div class="kx-section-title" style="margin-bottom:1rem;">◈ 6 Strategic Intelligence Blocks</div>', unsafe_allow_html=True)
 
 # ── 6 analysis sections ───────────────────────────────────────────────────────
 SECTIONS = [
@@ -73,73 +105,60 @@ SECTIONS = [
     ("6. Competitive Context",          "competitive_context",  "🎯", "kx-card-blue"),
 ]
 
-# Attempt to parse numbered sections from the agent output
 def extract_section(full_text: str, section_num: int) -> str:
-    """Extract a numbered section from the agent output."""
-    if not full_text:
-        return ""
+    """Extrae secciones numeradas del output del agente."""
+    if not full_text: return ""
     lines = full_text.split("\n")
     capturing = False
     out = []
     for line in lines:
-        if f"## {section_num}." in line or f"#{section_num}." in line:
+        if f"{section_num}." in line and (line.strip().startswith("#") or line.strip()[0].isdigit()):
             capturing = True
             continue
         if capturing:
-            next_section = any(f"## {section_num+1}." in line or f"#{section_num+1}." in line
-                               for _ in [None])
-            if next_section or ("[OPENING" in line.upper()):
+            if re.match(r'^(#+\s*)?' + str(section_num + 1) + r'\.', line.strip()):
                 break
             out.append(line)
     return "\n".join(out).strip()
 
+# Renderizado de Bloques
 for idx, (title, web_key, icon, card_class) in enumerate(SECTIONS, 1):
     section_text = extract_section(research, idx)
     raw_snippets = web_data.get(web_key, []) or []
 
-    with st.expander(f"{icon} {title}", expanded=(idx <= 3)):
+    # Usamos el contenedor principal para asegurar ancho total
+    with st.container():
+        st.markdown(f'<div style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 700; color: #FFF; font-size: 1.1rem;">{icon} {title}</div>', unsafe_allow_html=True)
+        
         if section_text:
-            clean = ' '.join(section_text.split())
-            st.markdown(f'<div class="kx-card {card_class}" style="margin-bottom:0.8rem;"><div class="kx-section-title">◈ AI Agent Analysis</div><div style="font-size:0.9rem;line-height:1.7;color:#C9D1D9;">{clean}</div></div>', unsafe_allow_html=True)
-
-        elif raw_snippets:
-            st.markdown(f'<div class="kx-section-title">◈ Collected Web Sources</div>', unsafe_allow_html=True)
-            for item in raw_snippets[:4]:
-                if isinstance(item, dict):
-                    snippet = item.get("snippet") or item.get("title") or item.get("content") or str(item)
-                    source  = item.get("url") or item.get("source") or ""
-                else:
-                    snippet = str(item)
-                    source  = ""
-                st.markdown(f"""
-                <div class="kx-card" style="padding:0.8rem 1rem;margin-bottom:0.5rem;">
-                    <div style="font-size:0.85rem;color:#C9D1D9;line-height:1.6;">{snippet}</div>
-                    {f'<div style="font-size:0.7rem;color:#00B4FF;margin-top:0.3rem;font-family:monospace;">{source}</div>' if source else ''}
-                </div>
-                """, unsafe_allow_html=True)
-        else:
+            # Limpiamos el texto antes de renderizar
+            clean_content = clean_ai_text(section_text)
+            
             st.markdown(f"""
-            <div style="color:#6B7280;font-size:0.85rem;font-family:'Share Tech Mono',monospace;padding:1rem 0;">
-                No data available for this section. The scraper found no information for '{web_key}'.
+            <div class="kx-analysis-card">
+                <div style="font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: #00FFB2; margin-bottom: 0.8rem; letter-spacing: 0.1rem;">◈ AI AGENT INSIGHT</div>
+                <div style="font-size: 0.95rem; line-height: 1.8; color: #C9D1D9;">
+                    {clean_content}
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-# ── Audit notes ────────────────────────────────────────────────────────────────
-st.markdown("---")
-st.markdown('<div class="kx-section-title">◈ Compliance Agent Audit Report</div>', unsafe_allow_html=True)
-audit_color = "kx-card-accent" if audit_ok else "kx-card-red"
-st.markdown(f"""
-<div class="kx-card {audit_color}">
-    <div style="display:flex;align-items:center;gap:0.8rem;">
-        <div style="font-size:1.5rem;">{"✅" if audit_ok else "⚠️"}</div>
-        <div>
-            <div style="font-weight:700;color:#FFF;">
-                {"Analysis verified — no hallucinations detected" if audit_ok else "Possible inaccuracies detected"}
-            </div>
-            <div style="color:#C9D1D9;font-size:0.85rem;margin-top:0.3rem;">{audit_notes}</div>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+        elif raw_snippets:
+            for item in raw_snippets[:3]:
+                snippet = item.get("snippet") or item.get("title") or str(item)
+                source = item.get("url") or ""
+                
+                st.markdown(f"""
+                <div class="kx-analysis-card" style="border-left: 2px solid #58A6FF; background: rgba(88, 166, 255, 0.05);">
+                    <div style="font-size:0.9rem; color:#C9D1D9; line-height:1.6;">{clean_ai_text(snippet)}</div>
+                    {f'<div style="font-size:0.75rem; color:#58A6FF; margin-top:0.6rem; font-family:monospace;">🔗 {source[:80]}...</div>' if source else ''}
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="color:#4B5563; font-size:0.85rem; padding: 1rem;">No real-time data found for this segment.</div>', unsafe_allow_html=True)
+
+# ── Audit notes footer ────────────────────────────────────────────────────────
+if not audit_ok:
+    st.markdown(f'<div style="color:#6B7280; font-family:monospace; font-size:0.75rem; padding:1rem; border-top:1px solid #1F2937; margin-top:2rem;">⚠ COMPLIANCE AUDIT: {audit_notes}</div>', unsafe_allow_html=True)
 
 page_footer()

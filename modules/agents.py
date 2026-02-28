@@ -14,7 +14,7 @@ def run_dual_agent_analysis(company_name, web_data, products, years_inactive, cl
     product_context = "\n".join([
         f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']} | Pain: {p['pain_solved']}"
         for p in products
-    ]) if products else "No hay productos identificados."
+    ]) if products else "There's no fitting products."
 
     tech_snippets = " ".join([i['snippet'] for i in web_data.get('tech_environment', []) if i.get('valid')])[:600]
     pain_snippets = " ".join([i['snippet'] for i in web_data.get('pain_points', []) if i.get('valid')])[:400]
@@ -42,7 +42,7 @@ def run_dual_agent_analysis(company_name, web_data, products, years_inactive, cl
     )
 
     # ── 3. Prompts ───────────────────────────────────────
-    research_prompt = f"""You are a B2B sales analyst specialized in enterprise technology (Dell).
+    research_prompt = f"""You are a B2B sales analyst specialized in enterprise technology (HPE).
 Analyze this account and generate a detailed commercial intelligence report.
 
 COMPANY: {company_name}
@@ -56,7 +56,7 @@ PAIN POINTS: {pain_snippets}
 FINANCIAL SIGNALS: {financial_snippets}
 TECH KEYWORDS: {tech_keywords}
 
-RECOMMENDED DELL SOLUTIONS:
+RECOMMENDED HPE SOLUTIONS:
 {product_context}
 
 CRITICAL: You MUST use EXACTLY these section tags, in this exact order, with no changes:
@@ -79,8 +79,14 @@ Write 40-60 words about relevant financial signals and budget capacity.
 [SECTION_6]
 Write 40-60 words about the competitive context of the company.
 
-RULES: Do NOT skip any section. Do NOT use markdown headers like ## or **. Only use [SECTION_N] tags as delimiters.
-IMPORTANT: Write your entire response in English."""
+You are a Senior Sales Intelligence Strategist. Your output must be professional, data-driven, and perfectly formatted for a modern UI dashboard.
+CRITICAL FORMATTING RULES:
+    NO MARKDOWN HEADERS: Never use symbols like '#', '##', or '###'.
+    EMPHASIS: Use bold text (**text**) only for key terms or titles within the paragraph.
+    STRUCTURE: Use clear paragraphs and bullet points (*) for lists.
+    TONE: Professional, concise, and focused on ROI.
+    LANGUAGE: Everything must be in English.
+Failure to follow these formatting rules will break the user interface. Ensure the text is clean and ready to be displayed in a dashboard card."""
 
     # ── 4. Función helper Ollama ─────────────────────────
     def call_ollama(prompt: str) -> str:

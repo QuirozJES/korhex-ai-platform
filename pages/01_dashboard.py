@@ -123,9 +123,54 @@ if current:
     years      = current.get("years_inactive", 0)
     net_new    = score_data.get("is_net_new", False)
 
-    # Kill Switch banner for active account (UI-only override)
-    if years >= 5:
-        st.error("🔴 DISCARD / DO NOT PURSUE")
+    # --- SMART STATUS BANNER (REPLACES THE OLD KILL SWITCH) ---
+    # Extraemos el estado de la auditoría del objeto 'current'
+    audit_ok = current.get("analysis", {}).get("audit_passed", False)
+    
+    HIGH_SCORE_THRESHOLD = 90
+
+    if audit_ok and total >= HIGH_SCORE_THRESHOLD:
+        status_msg = "● HIGH PRIORITY TARGET - PROCEED WITH STRATEGY"
+        status_color = "#00FFB2" # Verde neón
+        status_icon = "🚀"
+        bg_opacity = "rgba(0, 255, 178, 0.1)"
+
+    elif not audit_ok and total >= HIGH_SCORE_THRESHOLD:
+        status_msg = "● HIGH POTENTIAL / HIGH RISK - MANUAL REVIEW REQUIRED"
+        status_color = "#FFD600" 
+        status_icon = "⚠️"
+        bg_opacity = "rgba(255, 214, 0, 0.1)"
+
+    elif audit_ok and total < HIGH_SCORE_THRESHOLD:
+        status_msg = "● LOW PRIORITY - KEEP IN PIPELINE"
+        status_color = "#00B4FF"
+        status_icon = "📁"
+        bg_opacity = "rgba(0, 180, 255, 0.1)"
+
+    else:
+        status_msg = "● DISCARD / DO NOT PURSUE - CRITICAL RED FLAGS"
+        status_color = "#FF4B4B" # Rojo
+        status_icon = "🛑"
+        bg_opacity = "rgba(255, 75, 75, 0.1)"
+
+    st.markdown(f"""
+    <div style="
+        padding: 1.2rem; 
+        border-radius: 8px; 
+        margin-bottom: 2rem; 
+        background-color: {bg_opacity};
+        border: 1px solid {status_color};
+        color: {status_color};
+        font-weight: 800; 
+        letter-spacing: 0.05em;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    ">
+        <span style="font-size: 1.5rem;">{status_icon}</span> {status_msg}
+    </div>
+    """, unsafe_allow_html=True)
 
     ca, cb, cc = st.columns(3)
     with ca:
