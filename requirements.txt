@@ -8,8 +8,8 @@
 streamlit
 
 # ── AI Agent Orchestration ─────────────────────────────────
-crewai
-litellm          # Required by CrewAI for LLM routing (Ollama/OpenAI)
+crewai[litellm]  # Includes litellm extra for Ollama/local LLM routing
+litellm          # Explicit pin — required by CrewAI LLM class
 
 # ── Local LLM Client (Ollama) ──────────────────────────────
 ollama
