@@ -2,73 +2,73 @@
 
 ![KORHEX.AI](korhex-logo.png)
 
-**KORHEX.AI** is an **Enterprise Account Intelligence** platform strictly designed around a **"Zero Data Leakage"** architecture. It performs deep B2B account analysis operating entirely locally, ensuring that sensitive and strategic information never leaves the corporate environment.
+**KORHEX.AI** es una plataforma de **Enterprise Account Intelligence** diseñada estrictamente en torno a una arquitectura **"Zero Data Leakage"** (Cero Fuga de Datos). Realiza análisis profundos de cuentas B2B operando completamente de forma local, asegurando que la información sensible y estratégica nunca salga del entorno corporativo.
 
-## 🏗️ Technical Architecture (v2.0)
+## 🏗️ Arquitectura Técnica (v2.0)
 
-The system has been completely refactored from a monolithic proof-of-concept into a scalable, enterprise-grade decoupled architecture:
+El sistema ha sido refactorizado por completo, pasando de una prueba de concepto monolítica a una arquitectura desacoplada, escalable y de grado empresarial:
 
 ### 1. Frontend (React 18 + Vite + Tailwind CSS)
-- **UI/UX:** A modern, dark-themed dashboard tailored for Account Managers, featuring 5 distinct Intelligence Tabs (`Overview`, `Intelligence`, `Sales Speech`, `Products`, `Privacy Audit`).
-- **State Management:** Fully functional local history tracking and user preferences (Name, Industry defaults, Target Language).
-- **Network:** Asynchronous data fetching equipped with `AbortController` to cancel in-flight agent executions gracefully.
+- **UI/UX:** Un panel moderno con tema oscuro, diseñado a medida para Account Managers, que presenta 5 pestañas distintas de inteligencia (`Overview`, `Intelligence`, `Sales Speech`, `Products`, `Privacy Audit`).
+- **Gestión de Estado:** Seguimiento del historial local completamente funcional y preferencias de usuario (Nombre, Industria predeterminada, Idioma del reporte).
+- **Red:** Peticiones de datos asíncronas equipadas con `AbortController` para cancelar ejecuciones de agentes en vuelo de manera elegante.
 
 ### 2. Backend (FastAPI + Pydantic)
-- **Core Framework:** High-performance, asynchronous REST API powered by FastAPI.
-- **Data Validation:** Strict input/output validation and Prompt Injection prevention mechanisms using **Pydantic V2**.
-- **Auth Skeleton:** Prepared for enterprise JWT integration.
+- **Framework Principal:** API REST asíncrona de alto rendimiento impulsada por FastAPI.
+- **Validación de Datos:** Mecanismos estrictos de validación de entrada/salida y prevención de Inyección de Prompts utilizando **Pydantic V2**.
+- **Esqueleto de Autenticación:** Preparado para integración empresarial con JWT.
 
-### 3. AI Orchestration (CrewAI + Llama 3)
-- **Multi-Agent System:** Employs `CrewAI` to run sequential reasoning agents (Intelligence Analyst, Senior Sales Specialist).
-- **Zero Data Leakage Execution:** Uses **Llama 3** running locally via **Ollama**. *No external AI APIs (OpenAI, Anthropic) are used.*
-- **Corporate Scraping:** Swapped public API scrapers (Tavily) for `duckduckgo-search` strictly routed through an internal corporate proxy (`CORP_PROXY_URL`) to ensure complete search anonymity.
+### 3. Orquestación de IA (CrewAI + Llama 3)
+- **Sistema Multi-Agente:** Emplea `CrewAI` para ejecutar agentes de razonamiento secuencial (Analista de Inteligencia, Especialista Senior de Ventas).
+- **Ejecución Zero Data Leakage:** Utiliza **Llama 3** ejecutándose localmente a través de **Ollama**. *No se utilizan APIs de IA externas (OpenAI, Anthropic).*
+- **Web Scraping Corporativo:** Se reemplazaron los scrapers de APIs públicas (Tavily) por `duckduckgo-search` enrutado estrictamente a través de un proxy corporativo interno (`CORP_PROXY_URL`) para asegurar un completo anonimato en las búsquedas.
 
 ---
 
-## 💾 Data Structures & Schemas
+## 💾 Estructuras de Datos y Esquemas
 
-The application enforces a strict data contract between the frontend and backend using Pydantic:
+La aplicación impone un contrato de datos estricto entre el frontend y el backend utilizando Pydantic:
 
 ### `AnalysisRequest`
-Validates inputs to prevent prompt injection and handle default configurations:
-- `company_name`: `str` (Regex validated against injections)
+Valida las entradas para evitar inyecciones de prompts y manejar configuraciones predeterminadas:
+- `company_name`: `str` (Validado con Regex contra inyecciones)
 - `company_url`: `HttpUrl`
 - `industry`: `str`
-- `years_inactive`: `int` (Range: 0-20)
-- `report_language`: `str` (`en` or `es` — Injected directly into Llama 3 system prompts)
+- `years_inactive`: `int` (Rango: 0-20)
+- `report_language`: `str` (`en` o `es` — Inyectado directamente en los prompts de sistema de Llama 3)
 
 ### `AnalysisResponse`
-A comprehensive JSON payload unifying the output of the scraper, RAG portfolio matching, and CrewAI agents:
+Un payload JSON unificado que consolida la salida del scraper, el emparejamiento de portafolio RAG y los agentes de CrewAI:
 - `company_name` & `lead_score`
 - `data_quality` & `data_warning`
-- `intelligence_report` (Formatted with `[SECTION_N]` parsing tags for the UI)
-- `sales_speech` (Limited to 240 words via Auditor Agent)
+- `intelligence_report` (Formateado con etiquetas de parseo `[SECTION_N]` para la UI)
+- `sales_speech` (Limitado a 240 palabras por el Agente Auditor)
 - `audit_passed` & `audit_notes`
-- `products` (Array of ROI-focused product mappings)
+- `products` (Matriz de mapeos de productos enfocados en ROI)
 - `recent_news` & `sources`
 
 ---
 
-## 🚀 Setup & Execution
+## 🚀 Instalación y Ejecución
 
-### Prerequisites
+### Prerrequisitos
 - Node.js (v18+)
 - Python (v3.12+)
-- Ollama running locally with `llama3` pulled (`ollama run llama3`)
+- Ollama ejecutándose localmente con el modelo `llama3` descargado (`ollama run llama3`)
 
-### Environment Variables (`backend/.env`)
+### Variables de Entorno (`backend/.env`)
 ```env
-CORP_PROXY_URL=http://your-corporate-proxy:port
-JWT_SECRET=your_super_secret_jwt_key
+CORP_PROXY_URL=http://tu-proxy-corporativo:puerto
+JWT_SECRET=tu_clave_secreta_super_segura_jwt
 ```
 
-### 1-Click Startup (Windows)
-Run the provided PowerShell script from the root directory to automatically launch both the FastAPI backend and the Vite frontend:
+### Inicio Rápido con 1 Clic (Windows)
+Ejecuta el script de PowerShell proporcionado desde el directorio raíz para iniciar automáticamente tanto el backend de FastAPI como el frontend de Vite:
 ```powershell
 .\start.ps1
 ```
 
-### Manual Startup
+### Inicio Manual
 **Backend:**
 ```bash
 cd backend
@@ -85,6 +85,6 @@ npm run dev
 
 ---
 
-## 🔒 Security Policies
-- **Strict Network Isolation:** All LLM reasoning occurs on `127.0.0.1:11434`.
-- **Git Hygiene:** Dependencies (`node_modules`, `venv_backend`), environment variables (`.env`), and OS artifacts are properly `.gitignore`d.
+## 🔒 Políticas de Seguridad
+- **Aislamiento Estricto de Red:** Todo el razonamiento del LLM ocurre en `127.0.0.1:11434`.
+- **Higiene de Git:** Las dependencias (`node_modules`, `venv_backend`), las variables de entorno (`.env`) y los artefactos del sistema operativo están correctamente ignorados en `.gitignore`.
