@@ -1,0 +1,8 @@
+fastapi==0.110.0
+uvicorn==0.27.1
+pydantic==2.6.3
+crewai[litellm]==0.22.5
+litellm==1.31.14
+ollama==0.1.7
+tavily-python==0.3.3
+python-dotenv==1.0.1
