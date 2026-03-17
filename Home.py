@@ -24,7 +24,7 @@ st.markdown("""
         KORHEX.AI Account Intelligence Platform
     </h1>
     <div class="kx-easter-egg">
-        ▸ Zuany · Reyes · Quiroz · Herrera · Morales ◂
+        ▸ Zuany · Reyes · Quiroz · Herrera ◂
     </div>
 </div>
 

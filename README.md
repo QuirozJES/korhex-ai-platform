@@ -1,185 +1,79 @@
-<p align="center">
-  <img src="korhex-logo.png" alt="KORHEX.AI Logo" width="160"/>
-</p>
+# KORHEX.AI 🤖
 
-<h1 align="center">KORHEX.AI</h1>
-<p align="center">
-  <strong>B2B Account Intelligence Platform — Zero Data Leakage</strong><br/>
-  Local AI · Dual-Agent · SQLite · Ollama Llama 3
-</p>
+## Descripción del Proyecto
 
-<p align="center">
-  <img src="https://img.shields.io/badge/AI-Local%20Only-00FFB2?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Data%20to%20Cloud-0%20bytes-00FFB2?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B?style=flat-square"/>
-  <img src="https://img.shields.io/badge/LLM-Llama%203-blueviolet?style=flat-square"/>
-  <img src="https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square"/>
-</p>
+**KORHEX.AI** es una plataforma de **Enterprise Account Intelligence** diseñada con un enfoque estricto en **Zero Data Leakage**. Esta herramienta permite realizar análisis profundos de cuentas B2B operando de manera orientada a la privacidad, garantizando que la información sensible y estratégica esté siempre bajo control.
 
----
+## Arquitectura Técnica
 
-## What is KORHEX.AI?
+El sistema está construido sobre una arquitectura moderna, segura y localizada que integra tres componentes principales:
 
-KORHEX.AI is a **B2B Account Intelligence** platform built for enterprise sales teams. It analyzes target accounts, generates competitive intelligence, and produces personalized sales pitches — all running **100% on local hardware**, without sending any client data to external services.
+1. **Frontend en Streamlit**: Proporciona una interfaz de usuario interactiva, rápida y fluida para la captura de datos (URL, Nombre de la Empresa, Industria, años de inactividad) y la visualización de los resultados, "Net New Scores" y métricas de inteligencia.
+2. **Orquestación Multi-Agente con CrewAI**: Emplea una arquitectura basada en agentes especializados interagiendo entre sí (como el `Account Executive Agent`, `Compliance Agent`, y un `Auditor Agent`). Estos agentes trabajan en sincronía para recolectar señales web, validar la calidad e integridad de los datos, identificar sesgos/alucinaciones y generar un discurso de ventas estratégico y personalizado.
+3. **Ejecución Local con Llama 3 a través de Ollama**: El núcleo de procesamiento NLP opera de forma local utilizando **Llama 3** a través de **Ollama**. Esto asegura la privacidad bajo la premisa "Zero Data Leakage", procesando los análisis semánticos para hacer el _match_ con el portafolio de la empresa, todo en local sin depender de APIs LLM externas para el razonamiento.
 
-> *"The only AI-powered CRM your legal team won't object to."*
+Adicionalmente, la plataforma aprovecha la **API de Tavily** para la extracción de inteligencia y búsquedas web, e implementa una **base de datos SQLite** a nivel local para manejo en memoria y optimización de cachés, logrando despliegues de información casi inmediatos tras la primera consulta.
 
----
+## Prerrequisitos
 
-## Architecture — Zero Data Leakage
+Para ejecutar KORHEX.AI, asegúrate de cumplir con los siguientes requerimientos en tu sistema:
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     KORHEX.AI                           │
-│                                                         │
-│  Streamlit UI  ──►  CrewAI Dual-Agent                   │
-│       │                    │                            │
-│       ▼                    ▼                            │
-│   SQLite WAL        Ollama Llama 3 (Local GPU)          │
-│       │                    │                            │
-│       └────────────────────┘                            │
-│                    │                                    │
-│              Tavily API  ◄── Public URLs only           │
-│         (only outbound internet connection)             │
-└─────────────────────────────────────────────────────────┘
-          0 bytes of client data → cloud
-```
+- **Python 3.12** o superior.
+- **Ollama** instalado y ejecutándose de forma local.
+- **Modelo Llama 3** descargado en tu instancia local de Ollama (puedes descargarlo usando `ollama run llama3`).
 
-| Component | Location | To the Cloud? |
-|---|---|---|
-| Llama 3 LLM | Local GPU (RTX 5080) | ✗ NEVER |
-| SQLite Database | Local Disk | ✗ NEVER |
-| Streamlit UI | Local Network (localhost) | ✗ NEVER |
-| CrewAI Dual-Agent | Local RAM | ✗ NEVER |
-| Client Data | Local Memory | ✗ NEVER |
-| Tavily Web Search | Public API | ⚠ URLs Only |
+## Guía de Instalación
 
----
+Sigue estos pasos paso a paso para configurar y levantar el proyecto en tu máquina local:
 
-## Features
+1. **Clonar el repositorio**
 
-### 📊 Lead Intelligence Dashboard
-Automatic ranking of the top 5 accounts using a proprietary lead scoring algorithm. Real-time KPIs: total accounts analyzed, high-priority leads, net new logos, and the active account score.
+   ```bash
+   git clone <URL_DEL_REPOSITORIO>
+   cd korhex-ai-platform
+   ```
 
-### 🔬 Account Analysis — 6 Elements
-Deep analysis generated by Llama 3, structured into 6 B2B intelligence blocks:
-- Company Snapshot & Strategy
-- Technology Environment
-- IT Pain Points
-- Key Decision Makers
-- Financial Signals
-- Competitive Context
+2. **Crear el entorno virtual (venv)**
 
-### 🎯 Portfolio Recommendations
-Local RAG engine that maps client pain points against the product portfolio. Generates match scores and personalized ROI pitches — no external APIs involved.
+   ```bash
+   python -m venv venv
+   ```
 
-### 🗣️ Sales Speech Generator
-Sales pitch generated by the Account Executive Agent and verified by the Compliance Agent (bad cop). Guarantees zero hallucinations in client-facing content.
+3. **Activar el entorno virtual**
+   - En **Windows**:
+     ```powershell
+     .\venv\Scripts\activate
+     ```
+   - En **macOS/Linux**:
+     ```bash
+     source venv/bin/activate
+     ```
 
-### 🔒 Privacy & Cost Audit
-Real-time dashboard proving that 0 bytes of client data left the server. Includes cost comparison vs GPT-4 and Claude API.
+4. **Instalar dependencias**
+   Con el entorno virtual ya activo, instala los requerimientos oficiales del proyecto:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 📄 Executive PDF Report
-Professional 3-page report ready to deliver to C-level stakeholders. Includes company overview, lead score, full analysis, and the verified sales speech.
+## Configuración de Entorno
 
----
+El sistema requiere de ciertas variables de entorno para funcionar correctamente con servicios de apoyo (como el raspado inteligente web y base de datos extendida).
 
-## Tech Stack
-
-| Category | Technology |
-|---|---|
-| Frontend | Streamlit + Dark/Cyberpunk CSS |
-| AI Orchestration | CrewAI (Dual-Agent) |
-| LLM | Ollama + Llama 3 (local) |
-| Web Research | Tavily API (public metadata only) |
-| RAG Engine | Sentence Transformers + portfolio.json |
-| Database | SQLite WAL |
-| PDF Reports | ReportLab |
-| Runtime | Python 3.11+ |
-
----
-
-## Installation
-
-### Prerequisites
-- Python 3.11+
-- [Ollama](https://ollama.ai) installed and running
-- GPU recommended (RTX 3060 or better)
-
-### Setup
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/korhex-ai.git
-cd korhex-ai
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Pull the LLM model
-ollama pull llama3
-
-# 4. Configure environment variables
-cp .env.example .env
-# Edit .env with your TAVILY_API_KEY
-
-# 5. Run the application
-streamlit run app.py
-```
-
-### Environment Variables
+Debes crear un archivo llamado `.env` en la raíz del proyecto y añadir las siguientes llaves:
 
 ```env
-TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxx
+# Claves de acceso requeridas
+TAVILY_API_KEY=tu_api_key_de_tavily
 ```
 
-> The Tavily API key is the **only** external configuration required. It is used exclusively for public URL lookups — never for client data.
+_(Nota: Tavily se utiliza para buscar la información pública de las cuentas objetivo, y Supabase actúa como infraestructura en la nube según las necesidades de tu base de datos)._
 
----
+## Ejecución
 
-## Project Structure
+Una vez cumplidos los pasos de instalación y configuración de variables, y teniendo **Ollama** previamente arrancado en segundo plano, levanta la interfaz gráfica ejecutando el siguiente comando exacto:
 
-```
-korhex-ai/
-├── Home.py                         # Entry point + input sidebar
-├── .streamlit/
-│   └── config.toml                 # Dark theme config
-├── modules/
-│   ├── ui_theme.py                 # Global design system
-│   ├── agents.py                   # CrewAI Dual-Agent
-│   ├── scraper.py                  # Tavily + lead score algorithm
-│   ├── rag.py                      # Local RAG engine
-│   ├── database.py                 # SQLite WAL
-│   ├── audit_logger.py             # Privacy event log
-│   └── pdf_report.py               # Executive report generator
-├── streamlit_app/
-│   └── pages/
-│       ├── 01_Dashboard.py         # Lead Intelligence Dashboard
-│       ├── 02_Analysis.py          # 6-Element Analysis
-│       ├── 03_Recommendations.py   # Portfolio RAG
-│       ├── 04_Speech.py            # Sales Speech Generator
-│       └── 05_Privacy_audit.py     # Privacy & Cost Audit
-└── data/
-    └── portfolio.json              # Product catalog
+```bash
+streamlit run Home.py
 ```
 
----
-
-## Team
-
-Built as a final course project by:
-
-| Engineer | Area |
-|---|---|
-| Eng. 1 | Database — SQLite WAL, schema, queries |
-| Eng. 2 | RAG — Local recommendation engine |
-| Eng. 3 | Scraper — Tavily integration + lead score algorithm |
-| Eng. 4 | AI Agents — CrewAI Dual-Agent + Ollama |
-| Eng. 5 | UI — Streamlit frontend + design system |
-
----
-
-<p align="center">
-  0 bytes sent to the cloud<br/>
-  <strong>KORHEX.AI</strong> · Local AI · Zero Data Leakage Guaranteed
-</p>
+El portal de KORHEX.AI se abrirá automáticamente en tu navegador web por defecto. ¡Listo para analizar!
