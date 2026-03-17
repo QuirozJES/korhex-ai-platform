@@ -1,9 +1,28 @@
-# Ignorar el entorno virtual
+# ── Entornos Virtuales Python ─────────────────────────────
 venv/
+backend/venv_backend/
 
-# Ignorar variables de entorno y secretos
+# ── Variables de entorno y secretos ──────────────────────
 .env
+backend/.env
 
-# Ignorar carpetas ocultas de Python
+# ── Python cache ──────────────────────────────────────────
 __pycache__/
+*.pyc
+*.pyo
 .pytest_cache/
+
+# ── Node.js / Frontend ────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Bases de datos locales ────────────────────────────────
+*.db
+*.sqlite3
+
+# ── OS y editores ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json

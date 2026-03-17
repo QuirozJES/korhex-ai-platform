@@ -1,4 +1,4 @@
-import import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Search, Loader2, ShieldCheck, Activity } from 'lucide-react';
 
 export default function App() {

@@ -1,9 +1,60 @@
 import os
-from tavily import TavilyClient
+import time
+import random
+from duckduckgo_search import DDGS
 from dotenv import load_dotenv
 from datetime import datetime
 
 load_dotenv()
+
+# ─── CONFIGURACIÓN DE PROXY CORPORATIVO ──────────────────────
+# Configura CORP_PROXY_URL en tu .env, por ejemplo:
+#   CORP_PROXY_URL=http://proxy.empresa.com:8080
+# Si la variable no existe, se conecta directamente (modo dev).
+_PROXY = os.environ.get("CORP_PROXY_URL", None)
+
+# User-Agents para rotación y reducir riesgo de rate-limiting
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+]
+
+def _ddgs_client() -> DDGS:
+    """Crea un cliente DDG con proxy corporativo y User-Agent rotativo."""
+    return DDGS(
+        headers={"User-Agent": random.choice(_USER_AGENTS)},
+        proxies=_PROXY,   # None → conexión directa (modo dev sin proxy)
+        timeout=20,
+    )
+
+def _ddg_search(query: str, max_results: int = 5) -> list[dict]:
+    """
+    Ejecuta una búsqueda en DuckDuckGo y devuelve resultados normalizados
+    con la misma estructura que antes entregaba Tavily.
+    """
+    client = _ddgs_client()
+    raw = client.text(query, max_results=max_results)
+
+    items = []
+    for r in (raw or []):
+        url  = r.get("href", "")
+        domain = url.split("/")[2] if url and "/" in url else url
+        items.append({
+            "title":            r.get("title", ""),
+            "snippet":          r.get("body", "")[:400],
+            "url":              url,
+            "source":           domain,
+            "score":            1.0,   # DDG no devuelve score; usamos 1.0 como placeholder
+            "valid":            None,
+            "validation_issues": [],
+            "mentions_company": None,
+        })
+
+    # Pausa aleatoria entre peticiones para evitar rate-limiting
+    time.sleep(random.uniform(1.5, 3.5))
+    return items
 
 # ─── VALIDADOR DE DATOS ───────────────────────────────────
 
@@ -137,8 +188,6 @@ def cross_validate(web_data: dict, company_name: str) -> dict:
 
 def search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
 
-    client = TavilyClient(api_key=os.environ.get('TAVILY_API_KEY'))
-
     results = {
         'company': company_name,
         'company_url': company_url,
@@ -167,39 +216,14 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
         ('competitive_context', f'{company_name} competitors market position industry ranking', 'basic'),
     ]
 
-    # ── Ejecutar busquedas ──────────────────────────────
-    for key, query, depth in searches:
+    # ── Ejecutar busquedas via DuckDuckGo + proxy corporativo ──
+    for key, query, _depth in searches:
         try:
-            response = client.search(
-                query=query,
-                search_depth=depth,
-                max_results=5,
-                include_answer=True,
-                include_raw_content=False
-            )
-
-            items = []
-            for r in response.get('results', []):
-                url = r.get('url', '')
-                domain = url.split('/')[2] if url and '/' in url else url
-                items.append({
-                    'title': r.get('title', ''),
-                    'snippet': r.get('content', '')[:400],
-                    'url': url,
-                    'source': domain,
-                    'score': r.get('score', 0),
-                    'valid': None,
-                    'validation_issues': [],
-                    'mentions_company': None
-                })
-                if url:
-                    results['sources'].append(url)
-
-            items.sort(key=lambda x: x['score'], reverse=True)
+            items = _ddg_search(query, max_results=5)
+            for item in items:
+                if item['url']:
+                    results['sources'].append(item['url'])
             results[key] = items
-
-            if response.get('answer'):
-                results['summary'] += f"\n{response['answer']}"
 
         except Exception as e:
             results[key] = [{
@@ -215,17 +239,16 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
 
     # ── Noticias recientes ──────────────────────────────
     try:
-        news = client.search(
-            query=f'{company_name} news announcement 2024 2025',
-            search_depth='basic',
+        news_items = _ddg_search(
+            f'{company_name} news announcement 2024 2025',
             max_results=3
         )
-        for r in news.get('results', []):
+        for r in news_items:
             results['recent_news'].append({
-                'title': r.get('title', ''),
-                'snippet': r.get('content', '')[:300],
-                'url': r.get('url', ''),
-                'source': r.get('url', '').split('/')[2] if r.get('url') else ''
+                'title':   r['title'],
+                'snippet': r['snippet'][:300],
+                'url':     r['url'],
+                'source':  r['source'],
             })
     except:
         pass

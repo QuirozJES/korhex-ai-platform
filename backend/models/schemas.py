@@ -25,3 +25,7 @@ class AnalysisResponse(BaseModel):
     company_name: str
     lead_score: int
     intelligence_report: str
+    sales_speech: str = ""
+    audit_passed: bool = False
+    audit_notes: str = ""
+    priority: str = ""

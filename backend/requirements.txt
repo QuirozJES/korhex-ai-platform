@@ -1,8 +1,10 @@
-fastapi==0.110.0
-uvicorn==0.27.1
-pydantic==2.6.3
-crewai[litellm]==0.22.5
-litellm==1.31.14
-ollama==0.1.7
-tavily-python==0.3.3
-python-dotenv==1.0.1
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pydantic>=2.7.4
+python-multipart>=0.0.9
+crewai>=0.30.0            # 0.22.5 incompatible con Python 3.12 (ForwardRef bug)
+litellm>=1.35.0           # Versión compatible con crewai>=0.30 y Python 3.12
+ollama>=0.1.7
+duckduckgo-search>=6.1.7  # Reemplaza a Tavily — sin API key, proxy corporativo
+python-dotenv>=1.0.0
+
