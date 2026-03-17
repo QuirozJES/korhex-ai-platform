@@ -126,14 +126,14 @@ Failure to follow these formatting rules will break the user interface. Ensure t
             f'You MUST strictly provide a numbered list of exactly 5 products from the HPE portfolio (Top 5 HPE Solutions). '
             f'Use ONLY HPE products in your speech — never mention Dell, NVIDIA, Cisco, or any competitor brand. '
             f'Be extremely concise with each product description. '
-            f'Maximum word limit is 240 words. '
+            f'Maximum word limit is 350 words. '
             f'{lang_rule}'
         ),
         backstory=(
             f'You are a Senior HPE Sales Specialist with 12 years of experience selling HPE enterprise infrastructure. '
             f'You know the HPE portfolio inside out: ProLiant Gen11, Alletra Storage, GreenLake, Aruba Networking, Zerto, EliteBook, and EdgeConnect SecOps. '
             f'You NEVER recommend competitor products. You always include the Top 5 HPE Solutions list, '
-            f'never exceed 240 words, and you ALWAYS write in {lang_name}.'
+            f'never exceed 350 words, and you ALWAYS write in {lang_name}.'
         ),
         verbose=False,
         llm=mi_llm,
@@ -167,13 +167,13 @@ Failure to follow these formatting rules will break the user interface. Ensure t
         - Then write a numbered list titled 'Top 5 HPE Solutions:' with exactly 5 HPE products.
           For each product: one sentence max describing its specific benefit for {company_name}.
         - End with one clear call-to-action sentence.
-        - Total word count must be between 150 and 240 words. DO NOT exceed 240 words.
+        - Total word count must be between 150 and 350 words. DO NOT exceed 350 words.
         - Use ONLY HPE products. DO NOT mention Dell, NVIDIA, Cisco, or any competitor.
 
         {lang_rule}
-        CRITICAL LENGTH RULE: You must strictly limit your entire speech to a MAXIMUM of 240 words.
+        CRITICAL LENGTH RULE: You must strictly limit your entire speech to a MAXIMUM of 350 words.
         """
-        expected_sales = f"HPE sales pitch with Top 5 HPE Solutions numbered list, 150-240 words, in {lang_name}."
+        expected_sales = f"HPE sales pitch with Top 5 HPE Solutions numbered list, 150-350 words, in {lang_name}."
         audit_passed   = True
         audit_notes    = "Approved by Auditor: Complies with the Top 5 Rule."
 
@@ -218,11 +218,11 @@ Failure to follow these formatting rules will break the user interface. Ensure t
     word_count   = len(sales_speech.split())
 
     if client_status != "DISCARD":
-        audit_passed = 150 <= word_count <= 240
+        audit_passed = 150 <= word_count <= 350
         audit_notes  = (
             f"Speech approved: {word_count} words."
             if audit_passed else
-            f"Speech out of range: {word_count} words (expected: 150-240)."
+            f"Speech out of range: {word_count} words (expected: 150-350)."
         )
 
     return {

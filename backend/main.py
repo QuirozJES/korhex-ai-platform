@@ -1,11 +1,14 @@
 # backend/main.py
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+import io
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from models.schemas import AnalysisRequest, AnalysisResponse, ProductRecommendation, NewsItem
+from modules.pdf_report import generate_report
 from modules.scraper import search_account, calculate_net_new_score
 from modules.agents import run_dual_agent_analysis
 from modules.rag import get_relevant_products
@@ -107,8 +110,52 @@ async def analyze_account(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── 4. Generación de PDF Legacy ────────────────────────────────────────────
+@app.post("/api/v1/export-pdf")
+async def export_pdf(data: AnalysisResponse):
+    """
+    Recibe la respuesta de análisis completa del frontend y devuelve
+    el reporte PDF original generado por ReportLab.
+    """
+    try:
+        # Convert Pydantic model back to dict for the legacy generator
+        analysis_data = data.model_dump()
+        
+        # Restructure specifically for how generate_report expects it:
+        # It expects {"company_name": "...", "score": {"total_score": 58, "priority": "..."}, "analysis": {"research_analysis": "...", "sales_speech": "...", ...}}
+        formatted_data = {
+            "company_name": analysis_data["company_name"],
+            "company_url": "N/A", # URL is not passed back in standard response, but PDF handles "N/A"
+            "industry": analysis_data["industry"],
+            "years_inactive": 0, # Not strictly in response, defaults to 0
+            "score": {
+                "total_score": analysis_data["lead_score"],
+                "priority": analysis_data["priority"],
+                "is_net_new": True # Simplified
+            },
+            "analysis": {
+                "research_analysis": analysis_data["intelligence_report"],
+                "sales_speech": analysis_data["sales_speech"],
+                "audit_passed": analysis_data["audit_passed"],
+                "audit_notes": analysis_data["audit_notes"],
+                "word_count": analysis_data["word_count"]
+            },
+            "products": analysis_data["products"]
+        }
 
-# ── 4. Health check ────────────────────────────────────────────────────────
+        pdf_bytes = generate_report(formatted_data)
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=KORHEX_{data.company_name.replace(' ', '_')}_Report.pdf"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF Generation Error: {str(e)}")
+
+# ── 5. Health check ────────────────────────────────────────────────────────
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "KORHEX.AI — Backend API v2.0"}

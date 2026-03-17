@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   LayoutDashboard, Search, History, Settings, Shield,
   TrendingUp, Target, AlertTriangle, Loader2, CheckCircle,
@@ -17,7 +19,7 @@ const SECTION_META = [
   { tag: 'SECTION_6', label: 'Competitive Context', icon: BarChart2,     color: 'rose'    },
 ];
 const ICON_COLOR = {
-  emerald:'text-emerald-400', blue:'text-blue-400', orange:'text-orange-400',
+  emerald:'text-hpe-green', blue:'text-blue-400', orange:'text-orange-400',
   purple:'text-purple-400',   yellow:'text-yellow-400', rose:'text-rose-400',
 };
 
@@ -56,7 +58,7 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
   return (
     <button onClick={onClick}
       className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap
-        ${active ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+        ${active ? 'bg-hpe-green/20 text-hpe-green border border-hpe-green/30'
                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}`}>
       <Icon className="w-3.5 h-3.5" /><span>{label}</span>
     </button>
@@ -67,11 +69,11 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
 function OverviewTab({ result }) {
   return (
     <div className="space-y-3">
-      <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-5 flex items-center justify-between">
+      <div className="bg-hpe-bg border border-hpe-border rounded-xl p-5 flex items-center justify-between">
         <div>
           <p className="text-slate-400 text-xs font-mono uppercase tracking-widest mb-1">Net New Lead Score</p>
           <div className="text-3xl font-black text-white">{result.lead_score}<span className="text-lg text-slate-500">/100</span></div>
-          <p className={`text-xs font-semibold mt-1 ${result.lead_score >= 70 ? 'text-emerald-400' : result.lead_score >= 40 ? 'text-orange-400' : 'text-emerald-400'}`}>
+          <p className={`text-xs font-semibold mt-1 ${result.lead_score >= 70 ? 'text-hpe-green' : result.lead_score >= 40 ? 'text-orange-400' : 'text-hpe-green'}`}>
             {result.priority}
           </p>
         </div>
@@ -79,13 +81,13 @@ function OverviewTab({ result }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-semibold border uppercase
-          ${result.data_quality==='HIGH' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+          ${result.data_quality==='HIGH' ? 'text-hpe-green bg-hpe-green/10 border-hpe-green/30'
           : result.data_quality==='MEDIUM' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
           : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
           {result.data_quality} Quality
         </span>
         {result.tech_keywords && result.tech_keywords.split(' ').slice(0,5).map(kw => (
-          <span key={kw} className="px-2 py-0.5 bg-slate-800 text-slate-400 text-xs rounded border border-slate-700">{kw}</span>
+          <span key={kw} className="px-2 py-0.5 bg-slate-800 text-slate-400 text-xs rounded border border-hpe-border">{kw}</span>
         ))}
       </div>
       {result.data_warning && (
@@ -94,15 +96,15 @@ function OverviewTab({ result }) {
         </div>
       )}
       {result.recent_news?.length > 0 && (
-        <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4">
+        <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4">
           <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest mb-3 flex items-center space-x-1.5">
-            <Globe className="w-3.5 h-3.5 text-emerald-400" /><span>Recent News</span>
+            <Globe className="w-3.5 h-3.5 text-hpe-green" /><span>Recent News</span>
           </p>
           <div className="space-y-2">
             {result.recent_news.map((n,i) => (
               <a key={i} href={n.url} target="_blank" rel="noreferrer"
                 className="flex items-start space-x-2 p-2.5 rounded-lg bg-slate-800/40 hover:bg-slate-700/40 transition-colors group">
-                <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 shrink-0 mt-0.5 transition-colors" />
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-hpe-green shrink-0 mt-0.5 transition-colors" />
                 <div>
                   <p className="text-slate-200 text-xs font-medium leading-snug">{n.title}</p>
                   <p className="text-slate-500 text-xs mt-0.5">{n.source}</p>
@@ -123,7 +125,7 @@ function IntelligenceTab({ result }) {
     <div className="space-y-3">
       {SECTION_META.map(({ tag, label, icon: Icon, color }) =>
         sections[tag] ? (
-          <div key={tag} className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4">
+          <div key={tag} className="bg-hpe-bg border border-hpe-border rounded-xl p-4">
             <p className={`flex items-center space-x-1.5 text-xs font-semibold uppercase tracking-widest mb-2 ${ICON_COLOR[color]}`}>
               <Icon className="w-3.5 h-3.5" /><span>{label}</span>
             </p>
@@ -132,7 +134,7 @@ function IntelligenceTab({ result }) {
         ) : null
       )}
       {!hasAny && (
-        <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4">
+        <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4">
           <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">{result.intelligence_report}</p>
         </div>
       )}
@@ -145,14 +147,14 @@ function SpeechTab({ result }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className={`flex items-center space-x-1.5 text-xs font-semibold px-3 py-1 rounded-full border
-          ${result.audit_passed ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+          ${result.audit_passed ? 'text-hpe-green bg-hpe-green/10 border-hpe-green/30'
                                 : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
           {result.audit_passed ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
           <span>{result.audit_passed ? 'Audit Passed' : 'Audit Failed'}</span>
         </span>
         <span className="text-xs text-slate-500 font-mono">{result.word_count} words</span>
       </div>
-      <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4">
+      <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4">
         <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">{result.sales_speech}</p>
       </div>
       {result.audit_notes && <p className="text-xs text-slate-500 italic px-1">{result.audit_notes}</p>}
@@ -166,18 +168,18 @@ function ProductsTab({ result }) {
   return (
     <div className="space-y-3">
       {result.products.map((p,i) => (
-        <div key={i} className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-0.5 h-full bg-emerald-400" />
+        <div key={i} className="bg-hpe-bg border border-hpe-border rounded-xl p-4 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-0.5 h-full bg-hpe-green" />
           <div className="pl-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-emerald-400 font-bold text-sm">{p.name}</h3>
-              <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-emerald-400 transition-colors" />
+              <h3 className="text-hpe-green font-bold text-sm">{p.name}</h3>
+              <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-hpe-green transition-colors" />
             </div>
             <p className="text-slate-300 text-xs mb-3">{p.description}</p>
             <div className="grid grid-cols-2 gap-2">
               {p.roi_pitch && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2">
-                  <p className="text-xs text-emerald-400/70 font-mono uppercase mb-1">ROI</p>
+                <div className="bg-hpe-green/10 border border-hpe-green/20 rounded-lg p-2">
+                  <p className="text-xs text-hpe-green/70 font-mono uppercase mb-1">ROI</p>
                   <p className="text-emerald-300 text-xs">{p.roi_pitch}</p>
                 </div>
               )}
@@ -199,7 +201,7 @@ function AuditTab({ result }) {
   return (
     <div className="space-y-3">
       <div className={`flex items-center space-x-3 p-4 rounded-xl border
-        ${result.audit_passed ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+        ${result.audit_passed ? 'bg-hpe-green/10 border-hpe-green/30 text-hpe-green'
                               : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
         {result.audit_passed ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
         <div>
@@ -208,27 +210,27 @@ function AuditTab({ result }) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4 text-center">
+        <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4 text-center">
           <p className="text-slate-400 text-xs font-mono uppercase mb-1">LLM Engine</p>
           <p className="text-slate-100 font-bold text-sm">Llama 3 — Local</p>
           <p className="text-slate-500 text-xs">Ollama @ 127.0.0.1</p>
         </div>
-        <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4 text-center">
+        <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4 text-center">
           <p className="text-slate-400 text-xs font-mono uppercase mb-1">Data Quality</p>
           <p className="text-slate-100 font-bold text-sm">{result.data_quality}</p>
           <p className="text-slate-500 text-xs">{result.sources?.length ?? 0} sources</p>
         </div>
       </div>
       {result.sources?.length > 0 && (
-        <div className="bg-[#080f18] border border-slate-700/50 rounded-xl p-4">
+        <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4">
           <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest mb-3 flex items-center space-x-1.5">
-            <Lock className="w-3.5 h-3.5 text-emerald-400" /><span>Sources Used</span>
+            <Lock className="w-3.5 h-3.5 text-hpe-green" /><span>Sources Used</span>
           </p>
           <ul className="space-y-1.5">
             {result.sources.map((src,i) => (
               <li key={i}>
                 <a href={src} target="_blank" rel="noreferrer"
-                  className="flex items-center space-x-2 text-slate-400 hover:text-emerald-400 text-xs transition-colors">
+                  className="flex items-center space-x-2 text-slate-400 hover:text-hpe-green text-xs transition-colors">
                   <ExternalLink className="w-3 h-3 shrink-0" />
                   <span className="truncate">{src}</span>
                 </a>
@@ -252,19 +254,19 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
           <input type="text" required name="company_name" value={formData.company_name}
             onChange={onChange} placeholder="e.g. Acme Corp"
             disabled={loading}
-            className="w-full bg-[#080f18] border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-slate-600 transition-all disabled:opacity-50" />
+            className="w-full bg-hpe-bg border border-hpe-border rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 placeholder:text-slate-600 transition-all disabled:opacity-50" />
         </div>
       </div>
       <div>
         <label className="block text-xs text-slate-400 mb-1.5">Company URL</label>
         <input type="url" required name="company_url" value={formData.company_url}
           onChange={onChange} placeholder="https://example.com" disabled={loading}
-          className="w-full bg-[#080f18] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-slate-600 transition-all disabled:opacity-50" />
+          className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 placeholder:text-slate-600 transition-all disabled:opacity-50" />
       </div>
       <div>
         <label className="block text-xs text-slate-400 mb-1.5">Industry</label>
         <select name="industry" value={formData.industry} onChange={onChange} disabled={loading}
-          className="w-full bg-[#080f18] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all disabled:opacity-50">
+          className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 transition-all disabled:opacity-50">
           {['Technology','Finance','Healthcare','Manufacturing','Retail','Energy','Telecommunications'].map(i => (
             <option key={i} value={i}>{i}</option>
           ))}
@@ -272,17 +274,17 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
       </div>
       <div>
         <label className="block text-xs text-slate-400 mb-1.5">
-          Years Inactive: <span className="text-emerald-400 font-semibold">{formData.years_inactive}</span>
+          Years Inactive: <span className="text-hpe-green font-semibold">{formData.years_inactive}</span>
         </label>
         <input type="range" min="0" max="10" name="years_inactive"
           value={formData.years_inactive} onChange={onChange} disabled={loading}
-          className="w-full accent-emerald-400 disabled:opacity-50" />
+          className="w-full accent-hpe-green disabled:opacity-50" />
       </div>
 
       {/* Submit + Cancel */}
       <div className={`grid gap-2 ${loading ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <button type="submit" disabled={loading}
-          className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+          className="bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
           {loading
             ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
             : <><Search className="w-4 h-4" /><span>Execute Intelligence Agents</span></>}
@@ -308,13 +310,13 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
 }
 
 // ─── PAGES ─────────────────────────────────────────────────────────────────
-function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, history, onDelete, prefs }) {
+function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, history, onDelete, onView, prefs, resultsRef, onExport, isExporting }) {
   const TABS = [
-    { id:'overview',     label:'Overview',   icon:Activity  },
-    { id:'intelligence', label:'Intel',      icon:FileText  },
-    { id:'speech',       label:'Speech',     icon:Mic2      },
-    { id:'products',     label:'Products',   icon:Package   },
-    { id:'audit',        label:'Audit',      icon:Lock      },
+    { id:'overview',     label:'Overview',      icon:Activity  },
+    { id:'intelligence', label:'Intelligence',  icon:FileText  },
+    { id:'speech',       label:'Sales Speech',  icon:Mic2      },
+    { id:'products',     label:'Products',      icon:Package   },
+    { id:'audit',        label:'Privacy Audit', icon:Lock      },
   ];
   const stats = {
     analyzed:      history.length,
@@ -324,7 +326,7 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-white">Welcome, <span className="text-emerald-400">{prefs?.name || 'Account Manager'}</span></h1>
+        <h1 className="text-xl font-bold text-white">Welcome, <span className="text-hpe-green">{prefs?.name || 'Account Manager'}</span></h1>
         <p className="text-slate-400 text-sm mt-0.5">AI-powered commercial intelligence — fully local</p>
       </div>
       {/* Stats */}
@@ -334,16 +336,16 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
           { label:'Sales Opportunities',  sub:'Detected',   value:stats.opportunities, icon:TrendingUp,     pct:'+8%',  pos:true  },
           { label:'Risk Alerts',          sub:'Active',     value:stats.risks,         icon:AlertTriangle,  pct:`-${stats.risks}`, pos:false },
         ].map(({ label,sub,value,icon:Icon,pct,pos }) => (
-          <div key={label} className="bg-[#0a1628] border border-slate-800/60 rounded-xl p-4">
+          <div key={label} className="bg-hpe-panel border border-hpe-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
-                <Icon className="w-4 h-4 text-emerald-400" />
+                <Icon className="w-4 h-4 text-hpe-green" />
                 <div>
                   <p className="text-slate-300 text-xs font-medium">{label}</p>
                   <p className="text-slate-500 text-xs">{sub}</p>
                 </div>
               </div>
-              <span className={`text-xs font-mono font-semibold ${pos ? 'text-emerald-400' : 'text-red-400'}`}>{pct}</span>
+              <span className={`text-xs font-mono font-semibold ${pos ? 'text-hpe-green' : 'text-red-400'}`}>{pct}</span>
             </div>
             <p className="text-3xl font-black text-white">{value}</p>
           </div>
@@ -351,28 +353,37 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
       </div>
       {/* Form + Results */}
       <div className="grid grid-cols-5 gap-5">
-        <div className="col-span-2 bg-[#0a1628] border border-slate-800/60 rounded-xl p-5 h-fit">
+        <div className="col-span-2 bg-hpe-panel border border-hpe-border rounded-xl p-5 h-fit">
           <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-5">
-            <Search className="w-4 h-4 text-emerald-400" /><span>New Investigation</span>
+            <Search className="w-4 h-4 text-hpe-green" /><span>New Investigation</span>
           </h2>
           <InvestigationForm formData={formData} onChange={onChange} onSubmit={onSubmit}
             onCancel={onCancel} loading={loading} error={error} compact />
         </div>
-        <div className="col-span-3 bg-[#0a1628] border border-slate-800/60 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-4">
-            <TrendingUp className="w-4 h-4 text-emerald-400" /><span>AI Results</span>
-          </h2>
+        <div className="col-span-3 bg-hpe-panel border border-hpe-border rounded-xl p-5 relative">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+              <TrendingUp className="w-4 h-4 text-hpe-green" /><span>AI Results</span>
+            </h2>
+            {result && !loading && (
+              <button onClick={onExport} disabled={isExporting}
+                className="flex items-center space-x-1 text-xs px-3 py-1.5 rounded-md bg-hpe-bg border border-hpe-border text-slate-300 hover:text-hpe-green hover:border-hpe-green/50 transition-colors disabled:opacity-50">
+                {isExporting ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3" />}
+                <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+              </button>
+            )}
+          </div>
           {loading ? (
             <div className="flex flex-col items-center justify-center min-h-[350px] space-y-4">
-              <Activity className="w-10 h-10 text-emerald-400 animate-pulse" />
+              <Activity className="w-10 h-10 text-hpe-green animate-pulse" />
               <div className="text-center">
                 <p className="text-slate-200 text-sm font-medium">Orchestrating CrewAI Agents</p>
                 <p className="text-slate-500 text-xs mt-1 animate-pulse">Llama 3 analyzing account intelligence locally...</p>
               </div>
             </div>
           ) : result ? (
-            <div className="space-y-3">
-              <div className="flex items-center space-x-1 bg-[#080f18] border border-slate-800/60 rounded-lg p-1 overflow-x-auto">
+            <div className="space-y-3" ref={resultsRef}>
+              <div className="flex items-center space-x-1 bg-hpe-bg border border-hpe-border rounded-lg p-1 overflow-x-auto">
                 {TABS.map(t => (
                   <TabBtn key={t.id} active={activeTab===t.id} onClick={() => setActiveTab(t.id)} icon={t.icon} label={t.label} />
                 ))}
@@ -395,18 +406,18 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
       </div>
       {/* History table */}
       {history.length > 0 && (
-        <div className="bg-[#0a1628] border border-slate-800/60 rounded-xl p-5">
+        <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5">
           <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-4">
-            <History className="w-4 h-4 text-emerald-400" /><span>Investigation History</span>
+            <History className="w-4 h-4 text-hpe-green" /><span>Investigation History</span>
           </h2>
-          <HistoryTable history={history} onDelete={onDelete} />
+          <HistoryTable history={history} onDelete={onDelete} onView={onView} />
         </div>
       )}
     </div>
   );
 }
 
-function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab }) {
+function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, resultsRef, onExport, isExporting }) {
   const TABS = [
     { id:'overview',     label:'Overview',      icon:Activity  },
     { id:'intelligence', label:'Intelligence',  icon:FileText  },
@@ -417,43 +428,52 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-white">New <span className="text-emerald-400">Investigation</span></h1>
+        <h1 className="text-xl font-bold text-white">New <span className="text-hpe-green">Investigation</span></h1>
         <p className="text-slate-400 text-sm mt-0.5">Run a full AI-powered analysis on a target account</p>
       </div>
       <div className="grid grid-cols-5 gap-5">
         {/* Form - bigger here */}
-        <div className="col-span-2 bg-[#0a1628] border border-slate-800/60 rounded-xl p-6 h-fit">
+        <div className="col-span-2 bg-hpe-panel border border-hpe-border rounded-xl p-6 h-fit">
           <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-5">
-            <Target className="w-4 h-4 text-emerald-400" /><span>Target Account</span>
+            <Target className="w-4 h-4 text-hpe-green" /><span>Target Account</span>
           </h2>
           <InvestigationForm formData={formData} onChange={onChange} onSubmit={onSubmit}
             onCancel={onCancel} loading={loading} error={error} compact={false} />
-          <div className="mt-6 pt-5 border-t border-slate-800/60 space-y-2">
+          <div className="mt-6 pt-5 border-t border-hpe-border space-y-2">
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-widest">Pipeline</p>
             {['DuckDuckGo Web Scraping','RAG Portfolio Matching','CrewAI Dual Agent','Llama 3 — Ollama local','Lead Scoring Engine'].map((s,i) => (
               <div key={s} className="flex items-center space-x-2 text-xs text-slate-400">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0">{i+1}</div>
+                <div className="w-5 h-5 rounded-full bg-hpe-green/20 border border-hpe-green/30 flex items-center justify-center text-hpe-green font-bold text-xs shrink-0">{i+1}</div>
                 <span>{s}</span>
               </div>
             ))}
           </div>
         </div>
         {/* Results - bigger tabs */}
-        <div className="col-span-3 bg-[#0a1628] border border-slate-800/60 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-4">
-            <Activity className="w-4 h-4 text-emerald-400" /><span>Analysis Results</span>
-          </h2>
+        <div className="col-span-3 bg-hpe-panel border border-hpe-border rounded-xl p-5 relative">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+              <Activity className="w-4 h-4 text-hpe-green" /><span>Analysis Results</span>
+            </h2>
+            {result && !loading && (
+              <button onClick={onExport} disabled={isExporting}
+                className="flex items-center space-x-1 text-xs px-3 py-1.5 rounded-md bg-hpe-bg border border-hpe-border text-slate-300 hover:text-hpe-green hover:border-hpe-green/50 transition-colors disabled:opacity-50">
+                {isExporting ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3" />}
+                <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+              </button>
+            )}
+          </div>
           {loading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-              <Activity className="w-12 h-12 text-emerald-400 animate-pulse" />
+              <Activity className="w-12 h-12 text-hpe-green animate-pulse" />
               <div className="text-center">
                 <p className="text-slate-200 text-sm font-medium">Orchestrating CrewAI Agents</p>
                 <p className="text-slate-500 text-xs mt-1 animate-pulse">Llama 3 analyzing account intelligence locally...</p>
               </div>
             </div>
           ) : result ? (
-            <div className="space-y-3">
-              <div className="flex items-center space-x-1 bg-[#080f18] border border-slate-800/60 rounded-lg p-1 overflow-x-auto">
+            <div className="space-y-3" ref={resultsRef}>
+              <div className="flex items-center space-x-1 bg-hpe-bg border border-hpe-border rounded-lg p-1 overflow-x-auto">
                 {TABS.map(t => (
                   <TabBtn key={t.id} active={activeTab===t.id} onClick={() => setActiveTab(t.id)} icon={t.icon} label={t.label} />
                 ))}
@@ -478,12 +498,12 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
   );
 }
 
-function HistoryTable({ history, onDelete }) {
+function HistoryTable({ history, onDelete, onView }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-slate-500 border-b border-slate-800/60">
+          <tr className="text-slate-500 border-b border-hpe-border">
             {['Company','Industry','Lead Score','Status','Action'].map(col => (
               <th key={col} className="pb-2.5 text-left font-medium pr-4">{col}</th>
             ))}
@@ -497,25 +517,25 @@ function HistoryTable({ history, onDelete }) {
               <td className="py-3 pr-4">
                 <div className="flex items-center space-x-2">
                   <div className="flex-1 bg-slate-800 rounded-full h-1.5 w-16">
-                    <div className="h-1.5 rounded-full bg-emerald-400 transition-all" style={{ width:`${h.score}%` }} />
+                    <div className="h-1.5 rounded-full bg-hpe-green transition-all" style={{ width:`${h.score}%` }} />
                   </div>
                   <span className="text-slate-300 font-mono">{h.score}</span>
                 </div>
               </td>
               <td className="py-3 pr-4">
-                <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-full">
+                <span className="px-2 py-0.5 bg-hpe-green/15 text-hpe-green border border-hpe-green/25 rounded-full inline-block">
                   {h.status}
                 </span>
               </td>
-              <td className="py-3">
+              <td className="py-2 pr-4">
                 <div className="flex items-center space-x-3">
-                  <button className="flex items-center space-x-1 text-slate-400 hover:text-emerald-400 transition-colors">
-                    <Eye className="w-3.5 h-3.5" /><span>View Report</span>
+                  <button onClick={() => onView(i)} className="flex py-1 px-2 items-center space-x-1.5 text-slate-400 focus:outline-none hover:text-hpe-green hover:bg-hpe-green/10 rounded transition-all">
+                    <Eye className="w-4 h-4" /><span className="font-medium">View Report</span>
                   </button>
                   <button onClick={() => onDelete(i)}
                     title="Delete this entry"
-                    className="flex items-center space-x-1 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <Trash2 className="w-3.5 h-3.5" />
+                    className="flex p-1.5 items-center justify-center rounded text-slate-600 focus:outline-none hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </td>
@@ -527,16 +547,16 @@ function HistoryTable({ history, onDelete }) {
   );
 }
 
-function HistoryPage({ history, onDelete }) {
+function HistoryPage({ history, onDelete, onView }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-white">Investigation <span className="text-emerald-400">History</span></h1>
+        <h1 className="text-xl font-bold text-white">Investigation <span className="text-hpe-green">History</span></h1>
         <p className="text-slate-400 text-sm mt-0.5">{history.length} accounts analyzed in this session</p>
       </div>
-      <div className="bg-[#0a1628] border border-slate-800/60 rounded-xl p-5">
+      <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5">
         {history.length > 0
-          ? <HistoryTable history={history} onDelete={onDelete} />
+          ? <HistoryTable history={history} onDelete={onDelete} onView={onView} />
           : (
             <div className="flex flex-col items-center justify-center py-20 space-y-3 opacity-40">
               <History className="w-14 h-14 text-slate-600" />
@@ -563,30 +583,30 @@ function UserPreferencesPage({ prefs, onSave }) {
   return (
     <div className="space-y-5 max-w-2xl">
       <div>
-        <h1 className="text-xl font-bold text-white">User <span className="text-emerald-400">Preferences</span></h1>
+        <h1 className="text-xl font-bold text-white">User <span className="text-hpe-green">Preferences</span></h1>
         <p className="text-slate-400 text-sm mt-0.5">Personalize your KORHEX.AI experience</p>
       </div>
 
       {/* Profile */}
-      <div className="bg-[#0a1628] border border-slate-800/60 rounded-xl p-5 space-y-4">
+      <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5 space-y-4">
         <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center space-x-2">
-          <User className="w-3.5 h-3.5 text-emerald-400" /><span>Profile</span>
+          <User className="w-3.5 h-3.5 text-hpe-green" /><span>Profile</span>
         </p>
         <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 rounded-full bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-2xl font-black text-emerald-400">
+          <div className="w-14 h-14 rounded-full bg-hpe-green/20 border-2 border-hpe-green/40 flex items-center justify-center text-2xl font-black text-hpe-green">
             {(form.name || 'A').charAt(0).toUpperCase()}
           </div>
           <div className="flex-1">
             <label className="block text-xs text-slate-400 mb-1.5">Your Name</label>
             <input type="text" value={form.name} onChange={e => handleChange('name', e.target.value)}
               placeholder="e.g. Carlos Mendoza"
-              className="w-full bg-[#080f18] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-slate-600 transition-all" />
+              className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 placeholder:text-slate-600 transition-all" />
           </div>
         </div>
         <div>
           <label className="block text-xs text-slate-400 mb-1.5">Role</label>
           <select value={form.role} onChange={e => handleChange('role', e.target.value)}
-            className="w-full bg-[#080f18] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all">
+            className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 transition-all">
             {['Account Manager','Sales Executive','Sales Engineer','Team Lead','Director'].map(r => (
               <option key={r} value={r}>{r}</option>
             ))}
@@ -595,14 +615,14 @@ function UserPreferencesPage({ prefs, onSave }) {
       </div>
 
       {/* Investigation Defaults */}
-      <div className="bg-[#0a1628] border border-slate-800/60 rounded-xl p-5 space-y-4">
+      <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5 space-y-4">
         <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center space-x-2">
-          <Target className="w-3.5 h-3.5 text-emerald-400" /><span>Investigation Defaults</span>
+          <Target className="w-3.5 h-3.5 text-hpe-green" /><span>Investigation Defaults</span>
         </p>
         <div>
           <label className="block text-xs text-slate-400 mb-1.5">Default Industry</label>
           <select value={form.defaultIndustry} onChange={e => handleChange('defaultIndustry', e.target.value)}
-            className="w-full bg-[#080f18] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all">
+            className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 transition-all">
             {['Technology','Finance','Healthcare','Manufacturing','Retail','Energy','Telecommunications'].map(i => (
               <option key={i} value={i}>{i}</option>
             ))}
@@ -611,19 +631,19 @@ function UserPreferencesPage({ prefs, onSave }) {
         </div>
         <div>
           <label className="block text-xs text-slate-400 mb-1.5">
-            Default Years Inactive: <span className="text-emerald-400 font-semibold">{form.defaultYears}</span>
+            Default Years Inactive: <span className="text-hpe-green font-semibold">{form.defaultYears}</span>
           </label>
           <input type="range" min="0" max="10" value={form.defaultYears}
             onChange={e => handleChange('defaultYears', parseInt(e.target.value))}
-            className="w-full accent-emerald-400" />
+            className="w-full accent-hpe-green" />
           <p className="text-xs text-slate-500 mt-1.5">Slider will start here on every new investigation.</p>
         </div>
       </div>
 
       {/* Report Preferences */}
-      <div className="bg-[#0a1628] border border-slate-800/60 rounded-xl p-5 space-y-4">
+      <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5 space-y-4">
         <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center space-x-2">
-          <Languages className="w-3.5 h-3.5 text-emerald-400" /><span>Report Preferences</span>
+          <Languages className="w-3.5 h-3.5 text-hpe-green" /><span>Report Preferences</span>
         </p>
         <div>
           <label className="block text-xs text-slate-400 mb-2">Report Language</label>
@@ -633,8 +653,8 @@ function UserPreferencesPage({ prefs, onSave }) {
                 onClick={() => handleChange('reportLang', lang)}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
                   ${form.reportLang === lang
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                    : 'bg-[#080f18] text-slate-400 border-slate-700 hover:border-slate-500'}`}>
+                    ? 'bg-hpe-green/20 text-hpe-green border-hpe-green/40'
+                    : 'bg-hpe-bg text-slate-400 border-hpe-border hover:border-slate-500'}`}>
                 {lang}
               </button>
             ))}
@@ -648,7 +668,7 @@ function UserPreferencesPage({ prefs, onSave }) {
           </div>
           <button type="button" onClick={() => handleChange('showPipeline', !form.showPipeline)}
             className={`w-11 h-6 rounded-full transition-all relative ${
-              form.showPipeline ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+              form.showPipeline ? 'bg-hpe-green' : 'bg-slate-700'}`}>
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
               form.showPipeline ? 'left-5.5 translate-x-0.5' : 'left-0.5'}`} />
           </button>
@@ -659,8 +679,8 @@ function UserPreferencesPage({ prefs, onSave }) {
       <button onClick={handleSave}
         className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${
           saved
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-            : 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-[0_0_20px_rgba(16,185,129,0.3)]'}`}>
+            ? 'bg-hpe-green/20 text-hpe-green border border-hpe-green/40'
+            : 'bg-hpe-green hover:bg-hpe-green-hover text-slate-900 shadow-[0_0_20px_rgba(16,185,129,0.3)]'}`}>
         <Save className="w-4 h-4" />
         <span>{saved ? 'Preferences Saved!' : 'Save Preferences'}</span>
       </button>
@@ -679,6 +699,8 @@ export default function App() {
     showPipeline: true,
   });
   const abortControllerRef = useRef(null);
+  const resultsRef = useRef(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [formData, setFormData] = useState({
     company_name:'', company_url:'', industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears
@@ -729,7 +751,8 @@ export default function App() {
       setHistory(prev => [{
         company: data.company_name, industry: formData.industry,
         score: data.lead_score, priority: data.priority,
-        status: 'Completed', timestamp: new Date().toLocaleTimeString()
+        status: 'Completed', timestamp: new Date().toLocaleTimeString(),
+        fullData: data, fullFormData: formData
       }, ...prev.slice(0, 9)]);
     } catch (err) {
       if (err.name === 'AbortError') {
@@ -752,6 +775,51 @@ export default function App() {
     setHistory(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleViewReport = (index) => {
+    const item = history[index];
+    if (item && item.fullData) {
+      setResult(item.fullData);
+      setFormData(item.fullFormData);
+      setActiveTab('overview');
+      setActivePage('dashboard');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!result) return;
+    setIsExporting(true);
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result)
+      });
+      
+      if (!res.ok) {
+        throw new Error('Error generating PDF on server');
+      }
+
+      // Convert response to Blob and trigger download
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `KORHEX_${result.company_name.replace(/[^a-z0-9]/gi, '_').toUpperCase()}_Report.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error('PDF Export Error:', err);
+      alert('Error exporting PDF: ' + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const NAV = [
     { id:'dashboard', label:'Dashboard',         icon:LayoutDashboard },
     { id:'nueva',     label:'New Investigation', icon:Search          },
@@ -760,16 +828,16 @@ export default function App() {
   ];
 
   return (
-    <div className="flex h-screen bg-[#080f18] text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-hpe-bg text-slate-100 font-sans overflow-hidden">
 
       {/* SIDEBAR */}
-      <aside className="w-52 shrink-0 bg-[#0a1628] border-r border-slate-800/60 flex flex-col">
-        <div className="p-5 border-b border-slate-800/60">
+      <aside className="w-52 shrink-0 bg-hpe-sidebar border-r border-hpe-border flex flex-col">
+        <div className="p-5 border-b border-hpe-border">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-hpe-green/20 border border-hpe-green/40 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-hpe-green" />
             </div>
-            <span className="font-bold text-base tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+            <span className="font-bold text-base tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-hpe-green to-teal-300">
               KORHEX.AI
             </span>
           </div>
@@ -779,18 +847,18 @@ export default function App() {
             <button key={id} onClick={() => setActivePage(id)}
               className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-sm transition-all
                 ${activePage === id
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                  ? 'bg-hpe-green/15 text-hpe-green border border-hpe-green/25'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
               <Icon className="w-4 h-4 shrink-0" />
               <span>{label}</span>
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-slate-800/60">
-          <div className="flex items-center space-x-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="p-3 border-t border-hpe-border">
+          <div className="flex items-center space-x-2 px-3 py-2.5 rounded-lg bg-hpe-green/10 border border-hpe-green/20">
+            <Shield className="w-4 h-4 text-hpe-green shrink-0" />
             <div>
-              <p className="text-emerald-400 text-xs font-semibold">Zero Data Leakage</p>
+              <p className="text-hpe-green text-xs font-semibold">Zero Data Leakage</p>
               <p className="text-slate-500 text-xs">Local Mode Active</p>
             </div>
           </div>
@@ -805,7 +873,8 @@ export default function App() {
               formData={formData} onChange={handleInputChange}
               onSubmit={handleAnalyze} onCancel={handleCancel} loading={loading} error={error}
               result={result} activeTab={activeTab} setActiveTab={setActiveTab}
-              history={history} onDelete={handleDeleteHistory} prefs={prefs}
+              history={history} onDelete={handleDeleteHistory} onView={handleViewReport} prefs={prefs}
+              resultsRef={resultsRef} onExport={handleExportPDF} isExporting={isExporting}
             />
           )}
           {activePage === 'nueva' && (
@@ -813,9 +882,10 @@ export default function App() {
               formData={formData} onChange={handleInputChange}
               onSubmit={handleAnalyze} onCancel={handleCancel} loading={loading} error={error}
               result={result} activeTab={activeTab} setActiveTab={setActiveTab}
+              resultsRef={resultsRef} onExport={handleExportPDF} isExporting={isExporting}
             />
           )}
-          {activePage === 'historial' && <HistoryPage history={history} onDelete={handleDeleteHistory} />}
+          {activePage === 'historial' && <HistoryPage history={history} onDelete={handleDeleteHistory} onView={handleViewReport} />}
           {activePage === 'config'    && <UserPreferencesPage prefs={prefs} onSave={setPrefs} />}
         </div>
       </div>
