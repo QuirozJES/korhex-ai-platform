@@ -1,79 +1,90 @@
-# KORHEX.AI 🤖
+# KORHEX.AI Enterprise 🛡️🤖
 
-## Descripción del Proyecto
+![KORHEX.AI](korhex-logo.png)
 
-**KORHEX.AI** es una plataforma de **Enterprise Account Intelligence** diseñada con un enfoque estricto en **Zero Data Leakage**. Esta herramienta permite realizar análisis profundos de cuentas B2B operando de manera orientada a la privacidad, garantizando que la información sensible y estratégica esté siempre bajo control.
+**KORHEX.AI** is an **Enterprise Account Intelligence** platform strictly designed around a **"Zero Data Leakage"** architecture. It performs deep B2B account analysis operating entirely locally, ensuring that sensitive and strategic information never leaves the corporate environment.
 
-## Arquitectura Técnica
+## 🏗️ Technical Architecture (v2.0)
 
-El sistema está construido sobre una arquitectura moderna, segura y localizada que integra tres componentes principales:
+The system has been completely refactored from a monolithic proof-of-concept into a scalable, enterprise-grade decoupled architecture:
 
-1. **Frontend en Streamlit**: Proporciona una interfaz de usuario interactiva, rápida y fluida para la captura de datos (URL, Nombre de la Empresa, Industria, años de inactividad) y la visualización de los resultados, "Net New Scores" y métricas de inteligencia.
-2. **Orquestación Multi-Agente con CrewAI**: Emplea una arquitectura basada en agentes especializados interagiendo entre sí (como el `Account Executive Agent`, `Compliance Agent`, y un `Auditor Agent`). Estos agentes trabajan en sincronía para recolectar señales web, validar la calidad e integridad de los datos, identificar sesgos/alucinaciones y generar un discurso de ventas estratégico y personalizado.
-3. **Ejecución Local con Llama 3 a través de Ollama**: El núcleo de procesamiento NLP opera de forma local utilizando **Llama 3** a través de **Ollama**. Esto asegura la privacidad bajo la premisa "Zero Data Leakage", procesando los análisis semánticos para hacer el _match_ con el portafolio de la empresa, todo en local sin depender de APIs LLM externas para el razonamiento.
+### 1. Frontend (React 18 + Vite + Tailwind CSS)
+- **UI/UX:** A modern, dark-themed dashboard tailored for Account Managers, featuring 5 distinct Intelligence Tabs (`Overview`, `Intelligence`, `Sales Speech`, `Products`, `Privacy Audit`).
+- **State Management:** Fully functional local history tracking and user preferences (Name, Industry defaults, Target Language).
+- **Network:** Asynchronous data fetching equipped with `AbortController` to cancel in-flight agent executions gracefully.
 
-Adicionalmente, la plataforma aprovecha la **API de Tavily** para la extracción de inteligencia y búsquedas web, e implementa una **base de datos SQLite** a nivel local para manejo en memoria y optimización de cachés, logrando despliegues de información casi inmediatos tras la primera consulta.
+### 2. Backend (FastAPI + Pydantic)
+- **Core Framework:** High-performance, asynchronous REST API powered by FastAPI.
+- **Data Validation:** Strict input/output validation and Prompt Injection prevention mechanisms using **Pydantic V2**.
+- **Auth Skeleton:** Prepared for enterprise JWT integration.
 
-## Prerrequisitos
+### 3. AI Orchestration (CrewAI + Llama 3)
+- **Multi-Agent System:** Employs `CrewAI` to run sequential reasoning agents (Intelligence Analyst, Senior Sales Specialist).
+- **Zero Data Leakage Execution:** Uses **Llama 3** running locally via **Ollama**. *No external AI APIs (OpenAI, Anthropic) are used.*
+- **Corporate Scraping:** Swapped public API scrapers (Tavily) for `duckduckgo-search` strictly routed through an internal corporate proxy (`CORP_PROXY_URL`) to ensure complete search anonymity.
 
-Para ejecutar KORHEX.AI, asegúrate de cumplir con los siguientes requerimientos en tu sistema:
+---
 
-- **Python 3.12** o superior.
-- **Ollama** instalado y ejecutándose de forma local.
-- **Modelo Llama 3** descargado en tu instancia local de Ollama (puedes descargarlo usando `ollama run llama3`).
+## 💾 Data Structures & Schemas
 
-## Guía de Instalación
+The application enforces a strict data contract between the frontend and backend using Pydantic:
 
-Sigue estos pasos paso a paso para configurar y levantar el proyecto en tu máquina local:
+### `AnalysisRequest`
+Validates inputs to prevent prompt injection and handle default configurations:
+- `company_name`: `str` (Regex validated against injections)
+- `company_url`: `HttpUrl`
+- `industry`: `str`
+- `years_inactive`: `int` (Range: 0-20)
+- `report_language`: `str` (`en` or `es` — Injected directly into Llama 3 system prompts)
 
-1. **Clonar el repositorio**
+### `AnalysisResponse`
+A comprehensive JSON payload unifying the output of the scraper, RAG portfolio matching, and CrewAI agents:
+- `company_name` & `lead_score`
+- `data_quality` & `data_warning`
+- `intelligence_report` (Formatted with `[SECTION_N]` parsing tags for the UI)
+- `sales_speech` (Limited to 240 words via Auditor Agent)
+- `audit_passed` & `audit_notes`
+- `products` (Array of ROI-focused product mappings)
+- `recent_news` & `sources`
 
-   ```bash
-   git clone <URL_DEL_REPOSITORIO>
-   cd korhex-ai-platform
-   ```
+---
 
-2. **Crear el entorno virtual (venv)**
+## 🚀 Setup & Execution
 
-   ```bash
-   python -m venv venv
-   ```
+### Prerequisites
+- Node.js (v18+)
+- Python (v3.12+)
+- Ollama running locally with `llama3` pulled (`ollama run llama3`)
 
-3. **Activar el entorno virtual**
-   - En **Windows**:
-     ```powershell
-     .\venv\Scripts\activate
-     ```
-   - En **macOS/Linux**:
-     ```bash
-     source venv/bin/activate
-     ```
-
-4. **Instalar dependencias**
-   Con el entorno virtual ya activo, instala los requerimientos oficiales del proyecto:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Configuración de Entorno
-
-El sistema requiere de ciertas variables de entorno para funcionar correctamente con servicios de apoyo (como el raspado inteligente web y base de datos extendida).
-
-Debes crear un archivo llamado `.env` en la raíz del proyecto y añadir las siguientes llaves:
-
+### Environment Variables (`backend/.env`)
 ```env
-# Claves de acceso requeridas
-TAVILY_API_KEY=tu_api_key_de_tavily
+CORP_PROXY_URL=http://your-corporate-proxy:port
+JWT_SECRET=your_super_secret_jwt_key
 ```
 
-_(Nota: Tavily se utiliza para buscar la información pública de las cuentas objetivo, y Supabase actúa como infraestructura en la nube según las necesidades de tu base de datos)._
+### 1-Click Startup (Windows)
+Run the provided PowerShell script from the root directory to automatically launch both the FastAPI backend and the Vite frontend:
+```powershell
+.\start.ps1
+```
 
-## Ejecución
-
-Una vez cumplidos los pasos de instalación y configuración de variables, y teniendo **Ollama** previamente arrancado en segundo plano, levanta la interfaz gráfica ejecutando el siguiente comando exacto:
-
+### Manual Startup
+**Backend:**
 ```bash
-streamlit run Home.py
+cd backend
+.\venv_backend\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-El portal de KORHEX.AI se abrirá automáticamente en tu navegador web por defecto. ¡Listo para analizar!
+---
+
+## 🔒 Security Policies
+- **Strict Network Isolation:** All LLM reasoning occurs on `127.0.0.1:11434`.
+- **Git Hygiene:** Dependencies (`node_modules`, `venv_backend`), environment variables (`.env`), and OS artifacts are properly `.gitignore`d.

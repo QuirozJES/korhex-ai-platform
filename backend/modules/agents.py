@@ -9,7 +9,11 @@ def clean_text(text: str) -> str:
     text = re.sub(r'[^\x00-\x7F\u00C0-\u024F\u00A0-\u00FF\n\r\t ]', '', text)
     return text.strip()
 
-def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE"):
+def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE", report_language="en"):
+    # Language instruction injected into every prompt
+    lang_name   = "Spanish" if report_language == "es" else "English"
+    lang_rule   = f"CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in professional {lang_name}. DO NOT use any other language."
+    lang_suffix = f"Everything must be in {lang_name}."
     # ── 1. Contexto de Datos Reales ──────────────
     product_context = "\n".join([
         f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']} | Pain: {p['pain_solved']}"
@@ -80,7 +84,7 @@ CRITICAL FORMATTING RULES:
     EMPHASIS: Use bold text (**text**) only for key terms or titles within the paragraph.
     STRUCTURE: Use clear paragraphs and bullet points (*) for lists.
     TONE: Professional, concise, and focused on ROI.
-    LANGUAGE: Everything must be in English.
+    {lang_rule}
 Failure to follow these formatting rules will break the user interface. Ensure the text is clean and ready to be displayed in a dashboard card."""
 
     # ── 4. Función helper Ollama ─────────────────────────
@@ -118,20 +122,18 @@ Failure to follow these formatting rules will break the user interface. Ensure t
     sales_agent = Agent(
         role='Senior HPE Sales Specialist',
         goal=(
-            'Write persuasive pitches that include a Top 5 Solutions list ordered by priority. '
-            'You MUST strictly provide a numbered list of exactly 5 products from the HPE portfolio (Top 5 HPE Solutions). '
-            'Use ONLY HPE products in your speech — never mention Dell, NVIDIA, Cisco, or any competitor brand. '
-            'Be extremely concise with each product description. '
-            'Maximum word limit is 240 words. '
-            'CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response STRICTLY in professional Business English. '
-            'DO NOT output a single word in Spanish or any other language.'
+            f'Write persuasive pitches that include a Top 5 Solutions list ordered by priority. '
+            f'You MUST strictly provide a numbered list of exactly 5 products from the HPE portfolio (Top 5 HPE Solutions). '
+            f'Use ONLY HPE products in your speech — never mention Dell, NVIDIA, Cisco, or any competitor brand. '
+            f'Be extremely concise with each product description. '
+            f'Maximum word limit is 240 words. '
+            f'{lang_rule}'
         ),
         backstory=(
-            'You are a Senior HPE Sales Specialist with 12 years of experience selling HPE enterprise infrastructure. '
-            'You know the HPE portfolio inside out: ProLiant Gen11, Alletra Storage, GreenLake, Aruba Networking, Zerto, EliteBook, and EdgeConnect SecOps. '
-            'You NEVER recommend competitor products. You always include the Top 5 HPE Solutions list, '
-            'never exceed 240 words, and you ALWAYS write exclusively in Business English — '
-            'never in Spanish, regardless of the company or industry context.'
+            f'You are a Senior HPE Sales Specialist with 12 years of experience selling HPE enterprise infrastructure. '
+            f'You know the HPE portfolio inside out: ProLiant Gen11, Alletra Storage, GreenLake, Aruba Networking, Zerto, EliteBook, and EdgeConnect SecOps. '
+            f'You NEVER recommend competitor products. You always include the Top 5 HPE Solutions list, '
+            f'never exceed 240 words, and you ALWAYS write in {lang_name}.'
         ),
         verbose=False,
         llm=mi_llm,
@@ -145,9 +147,9 @@ Failure to follow these formatting rules will break the user interface. Ensure t
         DO NOT write the sales pitch.
         Write an 'Operational Risk Notice' of maximum 50 words
         explaining why it is NOT worth investing time in this company.
-        IMPORTANT: You must write your entire response in English.
+        {lang_rule}
         """
-        expected_sales = "Operational Risk Notice of maximum 50 words."
+        expected_sales = f"Operational Risk Notice of maximum 50 words in {lang_name}."
         audit_passed   = False
         audit_notes    = "Rejected by Auditor: High operational risk (DISCARD mode)."
     else:
@@ -168,11 +170,10 @@ Failure to follow these formatting rules will break the user interface. Ensure t
         - Total word count must be between 150 and 240 words. DO NOT exceed 240 words.
         - Use ONLY HPE products. DO NOT mention Dell, NVIDIA, Cisco, or any competitor.
 
-        CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response STRICTLY in professional
-        Business English. DO NOT output a single word in Spanish or any other language.
+        {lang_rule}
         CRITICAL LENGTH RULE: You must strictly limit your entire speech to a MAXIMUM of 240 words.
         """
-        expected_sales = "HPE sales pitch with Top 5 HPE Solutions numbered list, 150-240 words, in English only."
+        expected_sales = f"HPE sales pitch with Top 5 HPE Solutions numbered list, 150-240 words, in {lang_name}."
         audit_passed   = True
         audit_notes    = "Approved by Auditor: Complies with the Top 5 Rule."
 
@@ -184,9 +185,9 @@ Failure to follow these formatting rules will break the user interface. Ensure t
         TECH ENVIRONMENT: {tech_snippets}
         PAIN POINTS: {pain_snippets}
         Generate an analysis with: 1. CURRENT SITUATION, 2. PAIN POINTS, 3. COMMERCIAL OPPORTUNITY.
-        IMPORTANT: You must write your entire response in English.
+        {lang_rule}
         """,
-        expected_output="Structured report of the company's situation in English.",
+        expected_output=f"Structured report of the company's situation in {lang_name}.",
         agent=research_agent
     )
 
