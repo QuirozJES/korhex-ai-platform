@@ -7,13 +7,15 @@ $rootPath = $PSScriptRoot
 
 # ── 1. Backend (FastAPI en puerto 8000) ──────────────────────
 Start-Process powershell -ArgumentList @(
+    "-ExecutionPolicy", "Bypass",
     "-NoExit",
     "-Command",
-    "cd '$rootPath'; .\\backend\\venv_backend\\Scripts\\activate; cd backend; uvicorn main:app --reload --port 8000"
+    "cd '$rootPath\backend'; .\venv_backend\Scripts\activate; uvicorn main:app --reload --port 8000"
 ) -WindowStyle Normal
 
 # ── 2. Frontend (React/Vite en puerto 5173) ─────────────────
 Start-Process powershell -ArgumentList @(
+    "-ExecutionPolicy", "Bypass",
     "-NoExit",
     "-Command",
     "cd '$rootPath\\frontend'; npm run dev"
