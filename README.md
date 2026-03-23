@@ -1,10 +1,10 @@
 <div align="center">
 
+<img src="korhex-logo.png" alt="KORHEX.AI Logo" width="200" />
+
 # KORHEX.AI Enterprise
 
 ### AI-Powered B2B Account Intelligence Platform
-
-![KORHEX.AI](korhex-logo.png)
 
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
