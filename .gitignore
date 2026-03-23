@@ -1,9 +1,17 @@
-# Ignorar el entorno virtual
+# 1. Entornos Virtuales (Python)
 venv/
+backend/venv_backend/
 
-# Ignorar variables de entorno y secretos
+# 2. Dependencias de React/Node (JavaScript)
+node_modules/
+frontend/node_modules/
+
+# 3. Variables de entorno y secretos (Zero Data Leakage)
 .env
+backend/.env
+frontend/.env
 
-# Ignorar carpetas ocultas de Python
+# 4. Archivos basura de Python y caché
 __pycache__/
 .pytest_cache/
+*.pyc
