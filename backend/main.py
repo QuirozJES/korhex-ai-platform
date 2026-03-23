@@ -12,6 +12,7 @@ from modules.pdf_report import generate_report
 from modules.scraper import search_account, calculate_net_new_score
 from modules.agents import run_dual_agent_analysis
 from modules.rag import get_relevant_products
+from modules.auth import router as auth_router, get_current_user
 
 app = FastAPI(
     title="KORHEX.AI Enterprise API",
@@ -28,17 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── 2. JWT skeleton ────────────────────────────────────────────────────────
-def verify_jwt_token(token: str = "placeholder_token_ejemplo"):
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token no válido")
-    return {"user": "analista_korhex", "role": "admin"}
+# ── 2. JWT Authentication ────────────────────────────────────────────────────────
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 
 # ── 3. Endpoint principal ──────────────────────────────────────────────────
 @app.post("/api/v1/analyze", response_model=AnalysisResponse)
 async def analyze_account(
     request: AnalysisRequest,
-    current_user: dict = Depends(verify_jwt_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Pipeline completo (equivalente a las 5 páginas de Streamlit):

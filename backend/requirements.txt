@@ -7,4 +7,6 @@ litellm>=1.35.0           # Versión compatible con crewai>=0.30 y Python 3.12
 ollama>=0.1.7
 duckduckgo-search>=6.1.7  # Reemplaza a Tavily — sin API key, proxy corporativo
 python-dotenv>=1.0.0
+reportlab>=4.0             # Generación de PDF ejecutivo (pdf_report.py)
+pyjwt>=2.8.0
 

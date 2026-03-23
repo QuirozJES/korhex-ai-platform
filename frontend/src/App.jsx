@@ -27,7 +27,8 @@ function parseSections(text = '') {
   const sections = {};
   SECTION_META.forEach(({ tag }, idx) => {
     const next  = SECTION_META[idx + 1]?.tag;
-    const re    = new RegExp(`\\[${tag}\\]([\\s\\S]*?)${next ? `\\[${next}\\]` : '$'}`, 'i');
+    // Llama 3 sometimes omits brackets: match both [SECTION_N] and SECTION_N
+    const re    = new RegExp(`\\[?${tag}\\]?([\\s\\S]*?)${next ? `\\[?${next}\\]?` : '$'}`, 'i');
     const match = text.match(re);
     sections[tag] = match ? match[1].trim() : '';
   });
@@ -688,6 +689,183 @@ function UserPreferencesPage({ prefs, onSave }) {
   );
 }
 
+// ─── AUTHENTICATION & ADMIN ──────────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const params = new URLSearchParams();
+      params.append('username', username);
+      params.append('password', password);
+      const res = await fetch('http://localhost:8000/api/v1/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+      });
+      if (!res.ok) throw new Error('Invalid credentials');
+      const data = await res.json();
+      onLogin(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-hpe-bg items-center justify-center">
+      <div className="bg-hpe-panel p-8 rounded-xl border border-hpe-border w-96 shadow-xl">
+        <div className="text-center mb-6">
+          <Shield className="w-10 h-10 text-hpe-green mx-auto mb-2" />
+          <h1 className="text-2xl font-bold text-white tracking-wider">KORHEX.AI</h1>
+          <p className="text-slate-400 text-sm mt-1">Enterprise Authentication</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">Username</label>
+            <input type="text" required value={username} onChange={e=>setUsername(e.target.value)}
+              className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hpe-green/50" />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">Password</label>
+            <input type="password" required value={password} onChange={e=>setPassword(e.target.value)}
+              className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hpe-green/50" />
+          </div>
+          {error && <div className="text-red-400 text-xs p-2 bg-red-400/10 rounded border border-red-400/20">{error}</div>}
+          <button type="submit" disabled={loading}
+            className="w-full bg-hpe-green hover:bg-hpe-green-hover text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all mt-4 flex justify-center items-center">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Login'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboardPage({ token }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [newUser, setNewUser] = useState({ username:'', password: '', role: 'user' });
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/auth/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch users');
+      setUsers(await res.json());
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/auth/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(newUser)
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || 'Error creating user');
+      }
+      setNewUser({ username:'', password:'', role:'user' });
+      fetchUsers();
+    } catch (err) { alert(err.message); }
+  };
+
+  const handleDelete = async (username) => {
+    if(!window.confirm(`Delete ${username}?`)) return;
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/auth/users/${username}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Error deleting user');
+      fetchUsers();
+    } catch(err) { alert(err.message); }
+  };
+
+  const handleChangePassword = async (username) => {
+    const pw = window.prompt(`New password for ${username}:`);
+    if(!pw) return;
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/auth/users/${username}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ password: pw })
+      });
+      if (!res.ok) throw new Error('Error updating password');
+      alert('Password updated');
+    } catch(err) { alert(err.message); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-xl font-bold text-white">Admin <span className="text-hpe-green">Dashboard</span></h1>
+        <p className="text-slate-400 text-sm mt-0.5">Manage access and user credentials</p>
+      </div>
+      <div className="grid grid-cols-3 gap-5">
+        <div className="col-span-1 bg-hpe-panel border border-hpe-border rounded-xl p-5 h-fit">
+          <h2 className="text-sm font-semibold text-slate-200 mb-4">Create User</h2>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Username</label>
+              <input type="text" required value={newUser.username} onChange={e=>setNewUser({...newUser, username: e.target.value})} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Password</label>
+              <input type="password" required value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Role</label>
+              <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white">
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <button type="submit" className="w-full bg-hpe-green hover:bg-hpe-green-hover text-slate-900 font-bold py-2 rounded-lg text-sm mt-2 focus:outline-none">Create</button>
+          </form>
+        </div>
+        <div className="col-span-2 bg-hpe-panel border border-hpe-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-slate-200 mb-4">System Users</h2>
+          {loading ? <Loader2 className="w-6 h-6 animate-spin text-hpe-green" /> : error ? <p className="text-red-400">{error}</p> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead><tr className="border-b border-hpe-border text-slate-500"><th className="pb-2">ID</th><th className="pb-2">Username</th><th className="pb-2">Role</th><th className="pb-2 text-right">Actions</th></tr></thead>
+                <tbody className="divide-y divide-hpe-border/50">
+                  {users.map(u => (
+                    <tr key={u.id} className="hover:bg-slate-800/20">
+                      <td className="py-3">{u.id}</td>
+                      <td className="py-3 font-medium text-white">{u.username}</td>
+                      <td className="py-3"><span className="px-2 py-1 rounded bg-slate-800 text-xs">{u.role}</span></td>
+                      <td className="py-3 text-right space-x-2">
+                        <button onClick={()=>handleChangePassword(u.username)} className="text-xs text-blue-400 hover:text-blue-300">Reset PW</button>
+                        {u.username !== 'admin' && <button onClick={()=>handleDelete(u.username)} className="text-xs text-red-400 hover:text-red-300">Delete</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── APP ROOT ──────────────────────────────────────────────────────────────
 export default function App() {
   const [prefs, setPrefs] = useState({
@@ -701,6 +879,15 @@ export default function App() {
   const abortControllerRef = useRef(null);
   const resultsRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const [auth, setAuth] = useState(() => {
+    const saved = localStorage.getItem('korhex_auth');
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [formData, setFormData] = useState({
     company_name:'', company_url:'', industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears
@@ -725,6 +912,48 @@ export default function App() {
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
+
+    // 🏆 EASTER EGG (Opción 1: Búsqueda Secreta)
+    const searchTarget = formData.company_name.toLowerCase();
+    const isEasterEgg = ['zuany', 'quiroz', 'herrera', 'reyes'].every(name => searchTarget.includes(name));
+    
+    if (isEasterEgg) {
+      setLoading(true); setError(''); setResult(null); setActiveTab('overview');
+      // Simulamos un retraso como si los agentes estuvieran operando...
+      setTimeout(() => {
+        const fakeData = {
+          company_name: "ESTATE: KORHEX.AI CREATORS",
+          industry: "Cybersecurity & AI",
+          lead_score: 100,
+          priority: "GOD TIER OVERRIDES",
+          intelligence_report: "[SECTION_1]\nArchitectural Masters: Zuany, Quiroz, Herrera & Reyes.\n\n[SECTION_2]\nBuilding the next generation of zero-leakage Enterprise AI platforms.\n\n[SECTION_3]\nImpeccable logic execution. No vulnerabilities detected in the core crew algorithms.",
+          sales_speech: "This platform was forged in the depths of late-night coding. We yield the ultimate power over local Llama 3 agents. Absolute control. Zero data leakage.",
+          word_count: 999,
+          audit_passed: true,
+          audit_notes: "Compliance Bypassed by System Creators",
+          data_quality: "GODLIKE",
+          data_warning: null,
+          products: [
+            { name: "Zuany Core", description: "The architect of the foundation.", roi_pitch: "1000% stability.", pain_solved: "Structural integrity secured." },
+            { name: "Quiroz Protocol", description: "Oversight and security logic.", roi_pitch: "Absolute zero data leakage.", pain_solved: "Unauthorized access completely halted." },
+            { name: "Herrera Engine", description: "The driving force of the AI ops.", roi_pitch: "10x speed in processing.", pain_solved: "Agent hallucination mitigated." },
+            { name: "Reyes UX", description: "The master of the interface.", roi_pitch: "Infinite user engagement.", pain_solved: "Visual pain eliminated forever." }
+          ],
+          recent_news: [{ title: "KORHEX.AI Team revolutionizes Local Enterprise Agents", source: "Global Tech Times", url: "#" }],
+          sources: ["https://korhex.ai/top-secret-creators"],
+          tech_keywords: "REACT FASTAPI LLAMA3 CREWAI GENIUSES"
+        };
+        setResult(fakeData);
+        setHistory(prev => [{
+          company: "KORHEX CREATORS", industry: "AI Elite",
+          score: 100, priority: "MAX", status: 'Unstoppable', timestamp: new Date().toLocaleTimeString(),
+          fullData: fakeData, fullFormData: formData
+        }, ...prev.slice(0, 9)]);
+        setLoading(false);
+      }, 2000); // 2 segundos de suspenso
+      return;
+    }
+
     // Cancel any previous in-flight request
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -735,7 +964,7 @@ export default function App() {
       const res = await fetch('http://localhost:8000/api/v1/analyze', {
         method: 'POST',
         signal: controller.signal,
-        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer DUMMY_JWT' },
+        headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${auth?.access_token}` },
         body: JSON.stringify({
           ...formData,
           years_inactive: parseInt(formData.years_inactive, 10),
@@ -825,7 +1054,22 @@ export default function App() {
     { id:'nueva',     label:'New Investigation', icon:Search          },
     { id:'historial', label:'History',           icon:History         },
     { id:'config',    label:'Preferences',        icon:Settings        },
+    ...(auth?.role === 'admin' ? [{ id:'admin', label:'Admin Panel', icon:Users }] : [])
   ];
+
+  const handleLogin = (data) => {
+    localStorage.setItem('korhex_auth', JSON.stringify(data));
+    setAuth(data);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('korhex_auth');
+    setAuth(null);
+  };
+
+  if (!auth) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div className="flex h-screen bg-hpe-bg text-slate-100 font-sans overflow-hidden">
@@ -855,6 +1099,19 @@ export default function App() {
           ))}
         </nav>
         <div className="p-3 border-t border-hpe-border">
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-800/40 border border-slate-700/50 mb-2">
+            <div className="flex items-center space-x-2">
+              <User className="w-4 h-4 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-white text-xs font-semibold">{auth?.username}</p>
+                <p className="text-slate-500 text-[10px] uppercase tracking-wider">{auth?.role}</p>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="text-slate-500 hover:text-red-400 transition-colors" title="Logout">
+              <Shield className="w-4 h-4 opacity-0 absolute" /> {/* placeholder for spacing */}
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </div>
           <div className="flex items-center space-x-2 px-3 py-2.5 rounded-lg bg-hpe-green/10 border border-hpe-green/20">
             <Shield className="w-4 h-4 text-hpe-green shrink-0" />
             <div>
@@ -887,6 +1144,7 @@ export default function App() {
           )}
           {activePage === 'historial' && <HistoryPage history={history} onDelete={handleDeleteHistory} onView={handleViewReport} />}
           {activePage === 'config'    && <UserPreferencesPage prefs={prefs} onSave={setPrefs} />}
+          {activePage === 'admin'     && auth?.role === 'admin' && <AdminDashboardPage token={auth.access_token} />}
         </div>
       </div>
     </div>
