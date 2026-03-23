@@ -3,7 +3,7 @@ import time
 import random
 import asyncio
 import urllib.parse
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 from dotenv import load_dotenv
 from datetime import datetime
 

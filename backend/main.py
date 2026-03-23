@@ -16,6 +16,7 @@ from modules.pdf_report import generate_report
 from modules.scraper import search_account, calculate_net_new_score
 from modules.agents import run_dual_agent_analysis
 from modules.rag import get_relevant_products
+from modules.auth import router as auth_router, get_current_user
 from modules.database import (
     initialize_database,
     get_cached_account, save_account_cache,
@@ -103,7 +104,7 @@ def _build_response(
 @app.post("/api/v1/analyze", response_model=AnalysisResponse)
 async def analyze_account(
     request: AnalysisRequest,
-    current_user: dict = Depends(verify_jwt_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Pipeline completo:
@@ -196,7 +197,7 @@ async def analyze_account(
 @app.post("/api/v1/analyze/stream")
 async def analyze_stream(
     request: AnalysisRequest,
-    current_user: dict = Depends(verify_jwt_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Streaming SSE: emite tokens de Llama 3 en tiempo real al frontend.
