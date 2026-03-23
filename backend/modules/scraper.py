@@ -1,6 +1,7 @@
 import os
 import time
 import random
+import asyncio
 from duckduckgo_search import DDGS
 from dotenv import load_dotenv
 from datetime import datetime
@@ -21,6 +22,12 @@ _USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
 ]
 
+# Dominios irrelevantes a ignorar por defecto
+_BLACKLIST = [
+    "calculator", "translate.google", "facebook.com", "instagram.com",
+    "twitter.com", "x.com", "tiktok.com", "youtube.com", "pinterest.com"
+]
+
 def _ddgs_client() -> DDGS:
     """Crea un cliente DDG con proxy corporativo y User-Agent rotativo."""
     return DDGS(
@@ -29,248 +36,119 @@ def _ddgs_client() -> DDGS:
         timeout=20,
     )
 
-def _ddg_search(query: str, max_results: int = 5) -> list[dict]:
-    """
-    Ejecuta una búsqueda en DuckDuckGo y devuelve resultados normalizados
-    con la misma estructura que antes entregaba Tavily.
-    """
-    client = _ddgs_client()
-    raw = client.text(query, max_results=max_results, region='wt-wt')
-
+def _normalize_results(raw: list) -> list[dict]:
+    """Normaliza resultados DDG al formato interno."""
     items = []
-    
-    # Dominios irrelevantes a ignorar por defecto
-    blacklist = [
-        "calculator", "translate.google", "facebook.com", "instagram.com", 
-        "twitter.com", "x.com", "tiktok.com", "youtube.com", "pinterest.com"
-    ]
-
     for r in (raw or []):
-        url  = r.get("href", "")
+        url    = r.get("href", "")
         domain = url.split("/")[2] if url and "/" in url else url
-        
-        # Ignorar si el dominio coincide con algo de la blacklist
-        if any(bad_domain in domain.lower() for bad_domain in blacklist):
+
+        if any(bad in domain.lower() for bad in _BLACKLIST):
             continue
 
         items.append({
-            "title":            r.get("title", ""),
-            "snippet":          r.get("body", "")[:400],
-            "url":              url,
-            "source":           domain,
-            "score":            1.0,   # DDG no devuelve score; usamos 1.0 como placeholder
-            "valid":            None,
+            "title":             r.get("title", ""),
+            "snippet":           r.get("body", "")[:400],
+            "url":               url,
+            "source":            domain,
+            "score":             1.0,
+            "valid":             None,
             "validation_issues": [],
-            "mentions_company": None,
+            "mentions_company":  None,
         })
-
-    # Pausa aleatoria aumentada entre peticiones para evitar rate-limiting
-    time.sleep(random.uniform(2.5, 5.0))
     return items
 
-# ─── VALIDADOR DE DATOS ───────────────────────────────────
+# ─── ASYNC SEARCH ─────────────────────────────────────────────
 
-def validate_item(item: dict, field_name: str) -> dict:
+async def _async_ddg_search(query: str, max_results: int = 5) -> list[dict]:
     """
-    Valida un item individual del scraping.
-    Retorna el item con un campo 'valid' y 'reason'.
+    Versión async de la búsqueda DDG.
+    Corre el bloqueo de red en un thread pool para no bloquear el event loop.
     """
-    issues = []
+    loop = asyncio.get_event_loop()
 
-    # Verificar que el snippet no este vacio
-    snippet = item.get('snippet', '').strip()
-    if not snippet or len(snippet) < 30:
-        issues.append("snippet too short or empty")
+    def _blocking_search():
+        client = _ddgs_client()
+        raw = client.text(query, max_results=max_results, region='wt-wt')
+        # Pausa aleatoria aumentada entre peticiones para evitar rate-limiting
+        time.sleep(random.uniform(2.5, 5.0))
+        return raw
 
-    # Verificar que el titulo no este vacio
-    title = item.get('title', '').strip()
-    if not title:
-        issues.append("missing title")
+    raw = await loop.run_in_executor(None, _blocking_search)
+    return _normalize_results(raw)
 
-    # Verificar que la URL sea real
-    url = item.get('url', '')
-    if not url or url == '#' or 'error' in url.lower():
-        issues.append("invalid or missing URL")
-
-    # Verificar que el snippet sea relevante al campo
-    relevance_keywords = {
-        'strategy_background': ['strategy', 'business', 'plan', 'growth', 'expand', 'announce', 'launch', 'initiative'],
-        'tech_environment':    ['technology', 'cloud', 'server', 'data', 'IT', 'software', 'platform', 'system', 'infrastructure'],
-        'pain_points':         ['challenge', 'problem', 'issue', 'struggle', 'legacy', 'risk', 'cost', 'difficult', 'need'],
-        'decision_makers':     ['CEO', 'CTO', 'CIO', 'CFO', 'VP', 'director', 'chief', 'president', 'officer', 'executive'],
-        'financial_signals':   ['revenue', 'profit', 'billion', 'million', 'earnings', 'financial', 'growth', 'quarter', 'fiscal'],
-        'competitive_context': ['competitor', 'market', 'industry', 'versus', 'rival', 'leader', 'position', 'share', 'ranking']
-    }
-
-    keywords = relevance_keywords.get(field_name, [])
-    snippet_lower = snippet.lower()
-    matches = [kw for kw in keywords if kw.lower() in snippet_lower]
-    
-    if len(matches) == 0:
-        issues.append(f"snippet not relevant to {field_name}")
-
-    item['valid'] = len(issues) == 0
-    item['validation_issues'] = issues
-    item['relevance_matches'] = matches
-    return item
-
-
-def validate_field(items: list, field_name: str, min_valid: int = 1) -> dict:
+async def _fetch_with_timeout(query: str, max_results: int = 5, timeout: float = 10.0) -> list[dict]:
     """
-    Valida todos los items de un campo.
-    Retorna estadisticas de validacion.
+    Ejecuta _async_ddg_search con timeout. Si timeout ocurre, retorna lista vacía.
+    Target: reduce total scraping time from ~30s to ~8s.
     """
-    validated = [validate_item(item.copy(), field_name) for item in items]
-    valid_items = [i for i in validated if i['valid']]
-    invalid_items = [i for i in validated if not i['valid']]
-
-    return {
-        'items': validated,
-        'valid_count': len(valid_items),
-        'invalid_count': len(invalid_items),
-        'has_minimum': len(valid_items) >= min_valid,
-        'status': 'OK' if len(valid_items) >= min_valid else 'INSUFFICIENT'
-    }
-
-
-def cross_validate(web_data: dict, company_name: str) -> dict:
-    """
-    Validacion cruzada: verifica que los datos sean sobre
-    la empresa correcta y no sobre otra con nombre similar.
-    """
-    company_words = [w.lower() for w in company_name.split() if len(w) > 2]
-    validation_report = {}
-    total_valid = 0
-    total_items = 0
-
-    fields = [
-        'strategy_background', 'tech_environment', 'pain_points',
-        'decision_makers', 'financial_signals', 'competitive_context'
-    ]
-
-    for field in fields:
-        items = web_data.get(field, [])
-        field_validation = validate_field(items, field)
-        
-        # Validacion cruzada: el snippet menciona el nombre de la empresa?
-        for item in field_validation['items']:
-            snippet_lower = item.get('snippet', '').lower()
-            title_lower = item.get('title', '').lower()
-            combined = snippet_lower + ' ' + title_lower
-            
-            company_mentions = sum(1 for word in company_words if word in combined)
-            item['mentions_company'] = company_mentions > 0
-            
-            if not item['mentions_company']:
-                item['valid'] = False
-                item['validation_issues'].append(f"does not mention {company_name}")
-
-        # Recalcular validos despues de validacion cruzada
-        valid_after_cross = [i for i in field_validation['items'] if i['valid']]
-        field_validation['valid_count'] = len(valid_after_cross)
-        field_validation['status'] = 'OK' if len(valid_after_cross) >= 1 else 'INSUFFICIENT'
-
-        validation_report[field] = field_validation
-        total_valid += field_validation['valid_count']
-        total_items += len(items)
-
-    # Score de calidad general (0-100)
-    quality_score = int((total_valid / total_items * 100)) if total_items > 0 else 0
-
-    return {
-        'fields': validation_report,
-        'total_valid_items': total_valid,
-        'total_items': total_items,
-        'quality_score': quality_score,
-        'quality_label': (
-            'HIGH' if quality_score >= 70 else
-            'MEDIUM' if quality_score >= 40 else
-            'LOW'
-        ),
-        'fields_with_data': sum(
-            1 for f in validation_report.values() if f['status'] == 'OK'
-        ),
-        'fields_missing': [
-            f for f, v in validation_report.items() if v['status'] == 'INSUFFICIENT'
-        ]
-    }
-
-
-# ─── SCRAPER PRINCIPAL ────────────────────────────────────
-
-def search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
-
-    results = {
-        'company': company_name,
-        'company_url': company_url,
-        'industry': industry,
-        'search_date': datetime.now().strftime('%Y-%m-%d'),
-        'strategy_background': [],
-        'tech_environment': [],
-        'pain_points': [],
-        'decision_makers': [],
-        'financial_signals': [],
-        'competitive_context': [],
-        'summary': '',
-        'tech_keywords': '',
-        'recent_news': [],
-        'sources': [],
-        'validation_report': {},
-        'data_quality': 'PENDING'
-    }
-
-    searches = [
-        ('strategy_background', f'{company_name} corporate strategy business expansion 2024 2025', 'advanced'),
-        ('tech_environment',    f'{company_name} IT infrastructure technology stack cloud servers', 'advanced'),
-        ('pain_points',         f'{company_name} IT challenges technology problems legacy infrastructure', 'advanced'),
-        ('decision_makers',     f'{company_name} CTO CIO CEO CFO VP technology executives 2024 2025', 'basic'),
-        ('financial_signals',   f'{company_name} revenue earnings financial results investment 2024', 'basic'),
-        ('competitive_context', f'{company_name} competitors market position industry ranking', 'basic'),
-    ]
-
-    # ── Ejecutar busquedas via DuckDuckGo + proxy corporativo ──
-    for key, query, _depth in searches:
-        try:
-            items = _ddg_search(query, max_results=5)
-            for item in items:
-                if item['url']:
-                    results['sources'].append(item['url'])
-            results[key] = items
-
-        except Exception as e:
-            results[key] = [{
-                'title': 'Data unavailable',
-                'snippet': f'Search failed: {str(e)}',
-                'url': company_url or '#',
-                'source': 'error',
-                'score': 0,
-                'valid': False,
-                'validation_issues': ['search_failed'],
-                'mentions_company': False
-            }]
-
-    # ── Noticias recientes ──────────────────────────────
     try:
-        news_items = _ddg_search(
-            f'{company_name} news announcement 2024 2025',
-            max_results=3
-        )
-        for r in news_items:
-            results['recent_news'].append({
-                'title':   r['title'],
-                'snippet': r['snippet'][:300],
-                'url':     r['url'],
-                'source':  r['source'],
-            })
-    except:
-        pass
+        return await asyncio.wait_for(_async_ddg_search(query, max_results), timeout=timeout)
+    except asyncio.TimeoutError:
+        return []
+    except Exception:
+        return []
 
-    # ── Validacion cruzada completa ─────────────────────
+async def _async_search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
+    """
+    Versión completamente async de search_account().
+    Dispara las 6 búsquedas de inteligencia en PARALELO con asyncio.gather().
+    """
+    results = {
+        'company':            company_name,
+        'company_url':        company_url,
+        'industry':           industry,
+        'search_date':        datetime.now().strftime('%Y-%m-%d'),
+        'strategy_background': [],
+        'tech_environment':   [],
+        'pain_points':        [],
+        'decision_makers':    [],
+        'financial_signals':  [],
+        'competitive_context': [],
+        'summary':            '',
+        'tech_keywords':      '',
+        'recent_news':        [],
+        'sources':            [],
+        'validation_report':  {},
+        'data_quality':       'PENDING'
+    }
+
+    queries = [
+        ('strategy_background', f'{company_name} corporate strategy business expansion 2024 2025', 5),
+        ('tech_environment',    f'{company_name} IT infrastructure technology stack cloud servers', 5),
+        ('pain_points',         f'{company_name} IT challenges technology problems legacy infrastructure', 5),
+        ('decision_makers',     f'{company_name} CTO CIO CEO CFO VP technology executives 2024 2025', 5),
+        ('financial_signals',   f'{company_name} revenue earnings financial results investment 2024', 5),
+        ('competitive_context', f'{company_name} competitors market position industry ranking', 5),
+    ]
+
+    # ── Búsquedas principales en PARALELO ──
+    tasks = [_fetch_with_timeout(q, n, 10.0) for (_, q, n) in queries]
+    task_results = await asyncio.gather(*tasks)
+
+    for (key, _q, _n), items in zip(queries, task_results):
+        results[key] = items
+        for item in items:
+            if item.get('url'):
+                results['sources'].append(item['url'])
+
+    # ── Noticias recientes (paralelo implícito vía gather en un solo item) ──
+    news_items = await _fetch_with_timeout(
+        f'{company_name} news announcement 2024 2025', 3, 10.0
+    )
+    for r in news_items:
+        results['recent_news'].append({
+            'title':   r['title'],
+            'snippet': r['snippet'][:300],
+            'url':     r['url'],
+            'source':  r['source'],
+        })
+
+    # ── Validación cruzada ──
     validation = cross_validate(results, company_name)
     results['validation_report'] = validation
-    results['data_quality'] = validation['quality_label']
+    results['data_quality']      = validation['quality_label']
 
-    # ── Advertencia si la calidad es baja ───────────────
     if validation['quality_label'] == 'LOW':
         results['data_warning'] = (
             f"Low quality data detected for {company_name}. "
@@ -281,7 +159,7 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
     else:
         results['data_warning'] = None
 
-    # ── Keywords tecnologicos ───────────────────────────
+    # ── Keywords tecnológicos ──
     all_tech_text = ' '.join([i['snippet'] for i in results['tech_environment']]).lower()
     tech_kws = [
         'cloud', 'AI', 'servers', 'storage', 'network', 'data center',
@@ -290,18 +168,146 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
         'digital transformation', 'modernization', 'infrastructure'
     ]
     results['tech_keywords'] = ' '.join([kw for kw in tech_kws if kw.lower() in all_tech_text])
-    results['sources'] = list(dict.fromkeys([s for s in results['sources'] if s]))
+    results['sources']       = list(dict.fromkeys([s for s in results['sources'] if s]))
 
     return results
+
+# ─── VALIDADOR DE DATOS ───────────────────────────────────────
+
+def validate_item(item: dict, field_name: str) -> dict:
+    """Valida un item individual del scraping."""
+    issues = []
+
+    snippet = item.get('snippet', '').strip()
+    if not snippet or len(snippet) < 30:
+        issues.append("snippet too short or empty")
+
+    title = item.get('title', '').strip()
+    if not title:
+        issues.append("missing title")
+
+    url = item.get('url', '')
+    if not url or url == '#' or 'error' in url.lower():
+        issues.append("invalid or missing URL")
+
+    relevance_keywords = {
+        'strategy_background': ['strategy', 'business', 'plan', 'growth', 'expand', 'announce', 'launch', 'initiative'],
+        'tech_environment':    ['technology', 'cloud', 'server', 'data', 'IT', 'software', 'platform', 'system', 'infrastructure'],
+        'pain_points':         ['challenge', 'problem', 'issue', 'struggle', 'legacy', 'risk', 'cost', 'difficult', 'need'],
+        'decision_makers':     ['CEO', 'CTO', 'CIO', 'CFO', 'VP', 'director', 'chief', 'president', 'officer', 'executive'],
+        'financial_signals':   ['revenue', 'profit', 'billion', 'million', 'earnings', 'financial', 'growth', 'quarter', 'fiscal'],
+        'competitive_context': ['competitor', 'market', 'industry', 'versus', 'rival', 'leader', 'position', 'share', 'ranking']
+    }
+
+    keywords      = relevance_keywords.get(field_name, [])
+    snippet_lower = snippet.lower()
+    matches       = [kw for kw in keywords if kw.lower() in snippet_lower]
+
+    if len(matches) == 0:
+        issues.append(f"snippet not relevant to {field_name}")
+
+    item['valid']             = len(issues) == 0
+    item['validation_issues'] = issues
+    item['relevance_matches'] = matches
+    return item
+
+
+def validate_field(items: list, field_name: str, min_valid: int = 1) -> dict:
+    """Valida todos los items de un campo y retorna estadísticas."""
+    validated     = [validate_item(item.copy(), field_name) for item in items]
+    valid_items   = [i for i in validated if i['valid']]
+    invalid_items = [i for i in validated if not i['valid']]
+
+    return {
+        'items':       validated,
+        'valid_count': len(valid_items),
+        'invalid_count': len(invalid_items),
+        'has_minimum': len(valid_items) >= min_valid,
+        'status':      'OK' if len(valid_items) >= min_valid else 'INSUFFICIENT'
+    }
+
+
+def cross_validate(web_data: dict, company_name: str) -> dict:
+    """Validación cruzada: verifica que los datos sean sobre la empresa correcta."""
+    company_words     = [w.lower() for w in company_name.split() if len(w) > 2]
+    validation_report = {}
+    total_valid       = 0
+    total_items       = 0
+
+    fields = [
+        'strategy_background', 'tech_environment', 'pain_points',
+        'decision_makers', 'financial_signals', 'competitive_context'
+    ]
+
+    for field in fields:
+        items            = web_data.get(field, [])
+        field_validation = validate_field(items, field)
+
+        for item in field_validation['items']:
+            snippet_lower  = item.get('snippet', '').lower()
+            title_lower    = item.get('title', '').lower()
+            combined       = snippet_lower + ' ' + title_lower
+            company_mentions = sum(1 for word in company_words if word in combined)
+            item['mentions_company'] = company_mentions > 0
+
+            if not item['mentions_company']:
+                item['valid'] = False
+                item['validation_issues'].append(f"does not mention {company_name}")
+
+        valid_after_cross            = [i for i in field_validation['items'] if i['valid']]
+        field_validation['valid_count'] = len(valid_after_cross)
+        field_validation['status']   = 'OK' if len(valid_after_cross) >= 1 else 'INSUFFICIENT'
+
+        validation_report[field] = field_validation
+        total_valid += field_validation['valid_count']
+        total_items += len(items)
+
+    quality_score = int((total_valid / total_items * 100)) if total_items > 0 else 0
+
+    return {
+        'fields':             validation_report,
+        'total_valid_items':  total_valid,
+        'total_items':        total_items,
+        'quality_score':      quality_score,
+        'quality_label': (
+            'HIGH'   if quality_score >= 70 else
+            'MEDIUM' if quality_score >= 40 else
+            'LOW'
+        ),
+        'fields_with_data': sum(1 for f in validation_report.values() if f['status'] == 'OK'),
+        'fields_missing':   [f for f, v in validation_report.items() if v['status'] == 'INSUFFICIENT']
+    }
+
+
+# ─── SCRAPER PRINCIPAL (API PÚBLICA — BACKWARD COMPATIBLE) ────
+
+def search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
+    """
+    Entry point sincrónico backward-compatible.
+    Internamente lanza el pipeline async con asyncio.run() si no hay loop activo,
+    o con loop.run_until_complete() si ya existe uno (ej: dentro de FastAPI con executor).
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Estamos dentro de un event loop (FastAPI) → usar run_in_executor desde el llamador
+            # Aquí creamos un loop en un thread separado
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(asyncio.run, _async_search_account(company_name, company_url, industry))
+                return future.result()
+        else:
+            return asyncio.run(_async_search_account(company_name, company_url, industry))
+    except RuntimeError:
+        return asyncio.run(_async_search_account(company_name, company_url, industry))
 
 
 def calculate_net_new_score(years_inactive: int, web_data: dict) -> dict:
 
     inactivity_score = min(years_inactive * 15, 40)
 
-    # Solo contar items VALIDOS en el score
     validation = web_data.get('validation_report', {})
-    
+
     tech_valid = validation.get('fields', {}).get('tech_environment', {}).get('valid_count', 0)
     tech_score = min(tech_valid * 8, 25)
 
@@ -314,24 +320,24 @@ def calculate_net_new_score(years_inactive: int, web_data: dict) -> dict:
 
     if total >= 70:
         priority = 'HIGH PRIORITY'
-        color = 'red'
+        color    = 'red'
     elif total >= 40:
         priority = 'MEDIUM PRIORITY'
-        color = 'orange'
+        color    = 'orange'
     else:
         priority = 'MONITORING'
-        color = 'green'
+        color    = 'green'
 
     return {
         'total_score': total,
-        'priority': priority,
-        'color': color,
+        'priority':    priority,
+        'color':       color,
         'factors': {
-            'Inactivity Factor': inactivity_score,
-            'Tech Initiatives': tech_score,
-            'Pain Points Detected': pain_score,
-            'Recent Activity': news_score
+            'Inactivity Factor':     inactivity_score,
+            'Tech Initiatives':      tech_score,
+            'Pain Points Detected':  pain_score,
+            'Recent Activity':       news_score
         },
-        'is_net_new': years_inactive >= 3,
+        'is_net_new':   years_inactive >= 3,
         'data_quality': web_data.get('data_quality', 'UNKNOWN')
     }

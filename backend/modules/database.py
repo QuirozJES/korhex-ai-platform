@@ -171,3 +171,24 @@ def purge_company_data(company_name: str) -> None:
             "UPDATE audit_log SET company_name = 'REDACTED' WHERE company_name = ?",
             (company_name,),
         )
+
+
+def get_cache_hit_rate() -> dict:
+    """
+    Calcula la tasa de cache hits sobre el total de análisis ejecutados.
+    Retorna: { total_cached_entries, total_hits, hit_rate_pct }
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            '''SELECT COUNT(*) as entries, SUM(hit_count) as total_hits
+               FROM account_cache WHERE expires_at > CURRENT_TIMESTAMP'''
+        ).fetchone()
+    entries     = row["entries"]     if row else 0
+    total_hits  = row["total_hits"]  if row and row["total_hits"] else 0
+    denominator = entries + total_hits
+    hit_rate    = round((total_hits / denominator) * 100, 1) if denominator > 0 else 0.0
+    return {
+        "total_cached_entries": entries,
+        "total_hits":           total_hits,
+        "hit_rate_pct":         hit_rate,
+    }

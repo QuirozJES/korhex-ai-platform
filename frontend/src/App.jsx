@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
@@ -6,7 +6,8 @@ import {
   TrendingUp, Target, AlertTriangle, Loader2, CheckCircle,
   FileText, Mic2, Package, Lock, Activity, Cpu, Users,
   DollarSign, BarChart2, ExternalLink, Globe, ChevronRight,
-  Eye, User, Languages, Download, Save, Bell, Trash2, XCircle
+  Eye, User, Languages, Download, Save, Bell, Trash2, XCircle,
+  Copy, RefreshCw, Clock
 } from 'lucide-react';
 
 // ─── Utilities ─────────────────────────────────────────────────────────────
@@ -53,6 +54,123 @@ function CircularScore({ score }) {
   );
 }
 
+// ─── IMPROVEMENT 7: Lead Score Breakdown ───────────────────────────────────
+function ScoreBreakdown({ factors }) {
+  const bars = [
+    { label: 'Inactivity Factor', key: 'Inactivity Factor', max: 40 },
+    { label: 'Tech Signals',      key: 'Tech Initiatives',   max: 25 },
+    { label: 'Pain Points',       key: 'Pain Points Detected', max: 25 },
+    { label: 'Recent Activity',   key: 'Recent Activity',   max: 10 },
+  ];
+
+  const barColor = (value, max) => {
+    const pct = max > 0 ? value / max : 0;
+    if (pct >= 0.7) return 'bg-emerald-500';
+    if (pct >= 0.4) return 'bg-orange-400';
+    return 'bg-red-500';
+  };
+
+  return (
+    <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4 mt-3">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Score Breakdown</p>
+      <div className="space-y-2.5">
+        {bars.map(({ label, key, max }) => {
+          const value = factors?.[key] ?? 0;
+          const pct   = Math.min((value / max) * 100, 100);
+          return (
+            <div key={key}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">{label}</span>
+                <span className="text-slate-300 font-mono">{value}/{max}</span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-1.5 rounded-full ${barColor(value, max)}`}
+                  style={{ width: `${pct}%`, transition: 'width 0.8s ease-out' }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── IMPROVEMENT 6: Live Pipeline Tracker ──────────────────────────────────
+const PIPELINE_STEPS = [
+  { id: 'scraping',  label: 'Searching public intelligence...' },
+  { id: 'rag',       label: 'Validating 6 data elements...' },
+  { id: 'agents',    label: 'Running Account Executive Agent...' },
+  { id: 'auditor',   label: 'Running Compliance Auditor...' },
+  { id: 'scoring',   label: 'Calculating Lead Score...' },
+];
+
+function PipelineTracker({ steps }) {
+  return (
+    <div className="w-full space-y-2 px-2">
+      {PIPELINE_STEPS.map((s) => {
+        const st = steps[s.id] || 'pending';
+        return (
+          <div key={s.id} className="flex items-center space-x-3">
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              {st === 'done'       && <CheckCircle className="w-4 h-4 text-[#22c55e]" />}
+              {st === 'active'     && <Loader2    className="w-4 h-4 text-cyan-400 animate-spin" />}
+              {st === 'pending'    && <div className="w-3 h-3 rounded-full border border-slate-600" />}
+              {st === 'error'      && <XCircle    className="w-4 h-4 text-red-400" />}
+            </div>
+            <span className={`text-xs ${
+              st === 'done'  ? 'text-[#22c55e]'
+            : st === 'active' ? 'text-cyan-300 animate-pulse'
+            : st === 'error'  ? 'text-red-400'
+            : 'text-slate-500'
+            }`}>
+              {s.label}
+            </span>
+            {st === 'active' && (
+              <span className="text-xs text-slate-600 font-mono ml-auto">(in progress...)</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── IMPROVEMENT 8C: Data Freshness Indicator ──────────────────────────────
+function FreshnessIndicator({ timestamp, onRefresh }) {
+  if (!timestamp) return null;
+  const now      = Date.now();
+  const diffMs   = now - timestamp;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHrs  = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 60) {
+    return (
+      <div className="flex items-center space-x-1.5 text-xs text-emerald-400 mb-3">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span>Fresh data · {diffMins < 1 ? 'just now' : `${diffMins}m ago`}</span>
+      </div>
+    );
+  }
+  if (diffHrs < 24) {
+    return (
+      <div className="flex items-center space-x-1.5 text-xs text-yellow-400 mb-3">
+        <span className="w-2 h-2 rounded-full bg-yellow-400" />
+        <span>Data from {diffHrs}h ago ·{' '}
+          <button onClick={onRefresh} className="underline hover:text-yellow-200 transition-colors">Refresh?</button>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center space-x-1.5 text-xs text-red-400 mb-3">
+      <span className="w-2 h-2 rounded-full bg-red-400" />
+      <span>Stale data · Refresh recommended</span>
+    </div>
+  );
+}
+
 // ─── Tab Button ────────────────────────────────────────────────────────────
 function TabBtn({ active, onClick, icon: Icon, label }) {
   return (
@@ -66,9 +184,10 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
 }
 
 // ─── Result Tabs ───────────────────────────────────────────────────────────
-function OverviewTab({ result }) {
+function OverviewTab({ result, timestamp, onRefresh }) {
   return (
     <div className="space-y-3">
+      <FreshnessIndicator timestamp={timestamp} onRefresh={onRefresh} />
       <div className="bg-hpe-bg border border-hpe-border rounded-xl p-5 flex items-center justify-between">
         <div>
           <p className="text-slate-400 text-xs font-mono uppercase tracking-widest mb-1">Net New Lead Score</p>
@@ -79,6 +198,7 @@ function OverviewTab({ result }) {
         </div>
         <CircularScore score={result.lead_score} />
       </div>
+      {result._scoreFactors && <ScoreBreakdown factors={result._scoreFactors} />}
       <div className="flex flex-wrap gap-2">
         <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-semibold border uppercase
           ${result.data_quality==='HIGH' ? 'text-hpe-green bg-hpe-green/10 border-hpe-green/30'
@@ -283,12 +403,17 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
 
       {/* Submit + Cancel */}
       <div className={`grid gap-2 ${loading ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        <button type="submit" disabled={loading}
-          className="bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
-          {loading
-            ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
-            : <><Search className="w-4 h-4" /><span>Execute Intelligence Agents</span></>}
-        </button>
+        <div className="relative">
+          <button id="btn-execute" type="submit" disabled={loading}
+            className="w-full bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+            {loading
+              ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
+              : <><Search className="w-4 h-4" /><span>Execute Intelligence Agents</span></>}
+          </button>
+          {!loading && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-700 text-xs font-mono pointer-events-none">Ctrl+↵</span>
+          )}
+        </div>
         {loading && (
           <button type="button" onClick={onCancel}
             className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2">
@@ -310,7 +435,7 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
 }
 
 // ─── PAGES ─────────────────────────────────────────────────────────────────
-function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, history, onDelete, onView, prefs, resultsRef, onExport, isExporting }) {
+function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, history, onDelete, onView, prefs, resultsRef, onExport, isExporting, pipelineSteps, onReanalyze }) {
   const TABS = [
     { id:'overview',     label:'Overview',      icon:Activity  },
     { id:'intelligence', label:'Intelligence',  icon:FileText  },
@@ -374,12 +499,9 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
             )}
           </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[350px] space-y-4">
-              <Activity className="w-10 h-10 text-hpe-green animate-pulse" />
-              <div className="text-center">
-                <p className="text-slate-200 text-sm font-medium">Orchestrating CrewAI Agents</p>
-                <p className="text-slate-500 text-xs mt-1 animate-pulse">Llama 3 analyzing account intelligence locally...</p>
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[350px] space-y-4 w-full px-6">
+              <Activity className="w-8 h-8 text-hpe-green animate-pulse" />
+              <PipelineTracker steps={pipelineSteps} />
             </div>
           ) : result ? (
             <div className="space-y-3" ref={resultsRef}>
@@ -389,7 +511,7 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
                 ))}
               </div>
               <div className="max-h-[460px] overflow-y-auto pr-1 custom-scroll">
-                {activeTab==='overview'     && <OverviewTab     result={result} />}
+                {activeTab==='overview'     && <OverviewTab     result={result} timestamp={result._timestamp} onRefresh={onReanalyze} />}
                 {activeTab==='intelligence' && <IntelligenceTab result={result} />}
                 {activeTab==='speech'       && <SpeechTab       result={result} />}
                 {activeTab==='products'     && <ProductsTab     result={result} />}
@@ -410,14 +532,14 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
           <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-4">
             <History className="w-4 h-4 text-hpe-green" /><span>Investigation History</span>
           </h2>
-          <HistoryTable history={history} onDelete={onDelete} onView={onView} />
+          <HistoryTable history={history} onDelete={onDelete} onView={onView} onReanalyze={onReanalyze} />
         </div>
       )}
     </div>
   );
 }
 
-function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, resultsRef, onExport, isExporting }) {
+function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, resultsRef, onExport, isExporting, pipelineSteps, onReanalyze }) {
   const TABS = [
     { id:'overview',     label:'Overview',      icon:Activity  },
     { id:'intelligence', label:'Intelligence',  icon:FileText  },
@@ -464,12 +586,9 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
             )}
           </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-              <Activity className="w-12 h-12 text-hpe-green animate-pulse" />
-              <div className="text-center">
-                <p className="text-slate-200 text-sm font-medium">Orchestrating CrewAI Agents</p>
-                <p className="text-slate-500 text-xs mt-1 animate-pulse">Llama 3 analyzing account intelligence locally...</p>
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 w-full px-6">
+              <Activity className="w-8 h-8 text-hpe-green animate-pulse" />
+              <PipelineTracker steps={pipelineSteps} />
             </div>
           ) : result ? (
             <div className="space-y-3" ref={resultsRef}>
@@ -479,7 +598,7 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
                 ))}
               </div>
               <div className="max-h-[500px] overflow-y-auto pr-1 custom-scroll">
-                {activeTab==='overview'     && <OverviewTab     result={result} />}
+                {activeTab==='overview'     && <OverviewTab     result={result} timestamp={result._timestamp} onRefresh={onReanalyze} />}
                 {activeTab==='intelligence' && <IntelligenceTab result={result} />}
                 {activeTab==='speech'       && <SpeechTab       result={result} />}
                 {activeTab==='products'     && <ProductsTab     result={result} />}
@@ -498,13 +617,25 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
   );
 }
 
-function HistoryTable({ history, onDelete, onView }) {
+// ─── IMPROVEMENT 8A: History Table with Re-analyze + Copy Speech ──────────
+function HistoryTable({ history, onDelete, onView, onReanalyze }) {
+  const [copiedIdx, setCopiedIdx] = useState(null);
+
+  const handleCopy = (h, i) => {
+    const text = h.fullData?.sales_speech || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(i);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-slate-500 border-b border-hpe-border">
-            {['Company','Industry','Lead Score','Status','Action'].map(col => (
+            {['Company','Industry','Lead Score','Status','Actions'].map(col => (
               <th key={col} className="pb-2.5 text-left font-medium pr-4">{col}</th>
             ))}
           </tr>
@@ -527,15 +658,31 @@ function HistoryTable({ history, onDelete, onView }) {
                   {h.status}
                 </span>
               </td>
-              <td className="py-2 pr-4">
-                <div className="flex items-center space-x-3">
-                  <button onClick={() => onView(i)} className="flex py-1 px-2 items-center space-x-1.5 text-slate-400 focus:outline-none hover:text-hpe-green hover:bg-hpe-green/10 rounded transition-all">
-                    <Eye className="w-4 h-4" /><span className="font-medium">View Report</span>
+              <td className="py-2 pr-2">
+                <div className="flex items-center space-x-1 flex-wrap gap-y-1">
+                  <button onClick={() => onView(i)}
+                    className="flex py-1 px-2 items-center space-x-1 text-slate-400 focus:outline-none hover:text-hpe-green hover:bg-hpe-green/10 rounded transition-all">
+                    <Eye className="w-3.5 h-3.5" /><span className="font-medium">View</span>
+                  </button>
+                  <button onClick={() => onReanalyze(i)}
+                    title="Re-analyze this account"
+                    className="flex py-1 px-2 items-center space-x-1 text-slate-400 focus:outline-none hover:text-cyan-400 hover:bg-cyan-400/10 rounded transition-all">
+                    <RefreshCw className="w-3.5 h-3.5" /><span className="font-medium">Re-analyze</span>
+                  </button>
+                  <button onClick={() => handleCopy(h, i)}
+                    title="Copy sales speech"
+                    className={`flex py-1 px-2 items-center space-x-1 rounded transition-all focus:outline-none ${
+                      copiedIdx === i
+                        ? 'text-emerald-400 bg-emerald-400/10'
+                        : 'text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10'
+                    }`}>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span className="font-medium">{copiedIdx === i ? 'Copied!' : 'Copy Speech'}</span>
                   </button>
                   <button onClick={() => onDelete(i)}
                     title="Delete this entry"
                     className="flex p-1.5 items-center justify-center rounded text-slate-600 focus:outline-none hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </td>
@@ -556,7 +703,7 @@ function HistoryPage({ history, onDelete, onView }) {
       </div>
       <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5">
         {history.length > 0
-          ? <HistoryTable history={history} onDelete={onDelete} onView={onView} />
+          ? <HistoryTable history={history} onDelete={onDelete} onView={onView} onReanalyze={() => {}} />
           : (
             <div className="flex flex-col items-center justify-center py-20 space-y-3 opacity-40">
               <History className="w-14 h-14 text-slate-600" />
@@ -706,6 +853,10 @@ export default function App() {
     company_name:'', company_url:'', industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears
   });
 
+  // ── Mejora 6: Pipeline tracker state ──────────────────────
+  const initialPipelineSteps = { scraping: 'pending', rag: 'pending', agents: 'pending', auditor: 'pending', scoring: 'pending' };
+  const [pipelineSteps, setPipelineSteps] = useState(initialPipelineSteps);
+
   // Sync form defaults when prefs change
   useEffect(() => {
     setFormData(prev => ({ ...prev, industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears }));
@@ -723,14 +874,35 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // ── Mejora 8B: Ctrl+Enter keyboard shortcut ────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !loading) {
+        document.getElementById('btn-execute')?.closest('form')?.requestSubmit();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [loading]);
+
   const handleAnalyze = async (e) => {
     e.preventDefault();
-    // Cancel any previous in-flight request
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     setLoading(true); setError(''); setResult(null); setActiveTab('overview');
+    // Reset + start pipeline steps
+    setPipelineSteps({ scraping: 'active', rag: 'pending', agents: 'pending', auditor: 'pending', scoring: 'pending' });
+
+    // Simulate step progression (backend is single-shot, no SSE on main endpoint)
+    const stepTimers = [
+      setTimeout(() => setPipelineSteps(s => ({ ...s, scraping: 'done', rag: 'active' })), 4000),
+      setTimeout(() => setPipelineSteps(s => ({ ...s, rag: 'done', agents: 'active' })), 8000),
+      setTimeout(() => setPipelineSteps(s => ({ ...s, agents: 'done', auditor: 'active' })), 12000),
+      setTimeout(() => setPipelineSteps(s => ({ ...s, auditor: 'done', scoring: 'active' })), 16000),
+    ];
+
     try {
       const res = await fetch('http://localhost:8000/api/v1/analyze', {
         method: 'POST',
@@ -742,21 +914,32 @@ export default function App() {
           report_language: prefs.reportLang === 'Spanish' ? 'es' : 'en'
         })
       });
+      stepTimers.forEach(clearTimeout);
       if (!res.ok) {
         const errData = await res.json();
+        setPipelineSteps(s => ({ ...s, scraping: 'error' }));
         throw new Error(errData.detail?.[0]?.msg || errData.detail || 'Server error.');
       }
       const data = await res.json();
-      setResult(data);
+      setPipelineSteps({ scraping: 'done', rag: 'done', agents: 'done', auditor: 'done', scoring: 'done' });
+      // Attach metadata for Improvement 7 (score factors) and 8C (freshness)
+      const enrichedData = {
+        ...data,
+        _scoreFactors: data.score_factors || null,
+        _timestamp: Date.now(),
+      };
+      setResult(enrichedData);
       setHistory(prev => [{
         company: data.company_name, industry: formData.industry,
         score: data.lead_score, priority: data.priority,
         status: 'Completed', timestamp: new Date().toLocaleTimeString(),
-        fullData: data, fullFormData: formData
+        fullData: enrichedData, fullFormData: { ...formData }
       }, ...prev.slice(0, 9)]);
     } catch (err) {
+      stepTimers.forEach(clearTimeout);
       if (err.name === 'AbortError') {
         setError('Analysis cancelled.');
+        setPipelineSteps(initialPipelineSteps);
       } else {
         setError(err.message);
       }
@@ -784,6 +967,23 @@ export default function App() {
       setActivePage('dashboard');
     }
   };
+
+  // ── Mejora 8A: Re-analyze (pre-fill form + auto-submit) ────
+  const handleReanalyze = useCallback((index) => {
+    const item = history[index];
+    if (!item) return;
+    setFormData({ ...item.fullFormData });
+    setActivePage('dashboard');
+    // Use a small delay to let the form state settle before faking submit
+    setTimeout(() => {
+      document.getElementById('btn-execute')?.closest('form')?.requestSubmit();
+    }, 100);
+  }, [history]);
+
+  // ── Mejora 8C: Refresh current result ─────────────────────
+  const handleReanalyzeCurrentResult = useCallback(() => {
+    document.getElementById('btn-execute')?.closest('form')?.requestSubmit();
+  }, []);
 
   const handleExportPDF = async () => {
     if (!result) return;
@@ -875,6 +1075,7 @@ export default function App() {
               result={result} activeTab={activeTab} setActiveTab={setActiveTab}
               history={history} onDelete={handleDeleteHistory} onView={handleViewReport} prefs={prefs}
               resultsRef={resultsRef} onExport={handleExportPDF} isExporting={isExporting}
+              pipelineSteps={pipelineSteps} onReanalyze={handleReanalyzeCurrentResult}
             />
           )}
           {activePage === 'nueva' && (
@@ -883,6 +1084,7 @@ export default function App() {
               onSubmit={handleAnalyze} onCancel={handleCancel} loading={loading} error={error}
               result={result} activeTab={activeTab} setActiveTab={setActiveTab}
               resultsRef={resultsRef} onExport={handleExportPDF} isExporting={isExporting}
+              pipelineSteps={pipelineSteps} onReanalyze={handleReanalyzeCurrentResult}
             />
           )}
           {activePage === 'historial' && <HistoryPage history={history} onDelete={handleDeleteHistory} onView={handleViewReport} />}

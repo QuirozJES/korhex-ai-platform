@@ -34,11 +34,16 @@ def run_dual_agent_analysis(company_name, web_data, products, years_inactive, cl
     industry      = web_data.get('industry', 'Technology')
     data_quality  = web_data.get('data_quality', 'UNKNOWN')
 
-    # ── 2. Conexión local a Ollama ───────────────────────
-    mi_llm = LLM(
-        model="ollama/llama3",
-        base_url="http://localhost:11434"
-    )
+    # ── 2. Conexión local a Ollama (Singleton — modelo cargado una sola vez) ──
+    from modules.agent import OllamaClient
+    mi_llm = OllamaClient().llm
+
+    # Fallback: si el singleton no pudo inicializar el LLM, crear directo
+    if mi_llm is None:
+        mi_llm = LLM(
+            model="ollama/llama3",
+            base_url="http://localhost:11434"
+        )
 
     # ── 3. Prompts ───────────────────────────────────────
     research_prompt = f"""You are a B2B sales analyst specialized in enterprise technology (HPE).
