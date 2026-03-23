@@ -272,9 +272,10 @@ def generate_report(analysis_data: dict) -> bytes:
         import re as _re
         sec_map = {}
 
-        # ── Primary parser: new [SECTION_N] tag format ──────────────────────
+        # ── Primary parser: [SECTION_N] or SECTION_N tag format ────────────
+        # Llama 3 sometimes omits the square brackets, so make them optional
         tag_matches = _re.findall(
-            r'\[SECTION_(\d)\]\s*(.*?)(?=\[SECTION_\d\]|$)',
+            r'\[?SECTION_(\d)\]?\s*(.*?)(?=\[?SECTION_\d\]?|$)',
             research,
             _re.DOTALL
         )

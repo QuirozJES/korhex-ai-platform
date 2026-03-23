@@ -1,8 +1,12 @@
 """
 ui_theme.py — KORHEX.AI Global Theme & UI Utilities
-Importar en TODAS las páginas con: from modules.ui_theme import apply_theme, ...
+LEGACY MODULE: Previously used with Streamlit frontend.
+Kept for reference/backward-compatibility.
 """
-import streamlit as st
+try:
+    import streamlit as st
+except ImportError:
+    st = None  # Streamlit not installed — module kept for reference only
 
 KORHEX_CSS = """
 <style>

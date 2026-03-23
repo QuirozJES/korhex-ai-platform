@@ -29,31 +29,91 @@ def _ddgs_client() -> DDGS:
         timeout=20,
     )
 
-def _ddg_search(query: str, max_results: int = 5) -> list[dict]:
+def _ddg_search(query: str, max_results: int = 5, company_name: str = '', company_domain: str = '') -> list[dict]:
     """
-    Ejecuta una búsqueda en DuckDuckGo y devuelve resultados normalizados
-    con la misma estructura que antes entregaba Tavily.
+    Ejecuta una búsqueda en DuckDuckGo y devuelve resultados normalizados.
+    Usa filtrado por relevancia + retry con query simplificada si hay pocos resultados.
     """
-    client = _ddgs_client()
-    raw = client.text(query, max_results=max_results)
+    # ── Patrones de dominio spam/irrelevante ────────────────────────────
+    _JUNK_PATTERNS = {
+        'calculator', 'mathway', 'calc-online', 'askmathguru', 'fractioncalc',
+        'symbolab', 'wolframalpha', 'mathpapa', 'cymath',
+        'translate.google', 'deepl.com/translator', 'reverso.net',
+        'pinterest.', 'tiktok.', 'instagram.', 'facebook.', 'youtube.',
+        'reddit.', 'twitter.', 'x.com', 'quora.', 'tumblr.',
+        'amazon.', 'ebay.', 'aliexpress.', 'mercadolibre.',
+        'tripadvisor.', 'yelp.', 'allrecipes.', 'recetas',
+        'booking.com', 'expedia.', 'airbnb.',
+        'bokep', 'porn', 'xxx', 'xvideo', 'xnxx', 'xhamster',
+        'wikihow.', 'answers.com',
+        '/car-rental', '/math/', '/recipe',
+    }
 
-    items = []
-    for r in (raw or []):
-        url  = r.get("href", "")
-        domain = url.split("/")[2] if url and "/" in url else url
-        items.append({
-            "title":            r.get("title", ""),
-            "snippet":          r.get("body", "")[:400],
-            "url":              url,
-            "source":           domain,
-            "score":            1.0,   # DDG no devuelve score; usamos 1.0 como placeholder
-            "valid":            None,
-            "validation_issues": [],
-            "mentions_company": None,
-        })
+    company_words = [w.lower() for w in company_name.split() if len(w) > 2] if company_name else []
 
-    # Pausa aleatoria entre peticiones para evitar rate-limiting
-    time.sleep(random.uniform(1.5, 3.5))
+    def _fetch_and_filter(q: str, n: int) -> list[dict]:
+        """Busca y filtra resultados de DDG."""
+        client = _ddgs_client()
+        try:
+            raw = client.text(q, region='wt-wt', max_results=n)
+        except Exception:
+            return []
+
+        filtered = []
+        for r in (raw or []):
+            url    = r.get("href", "")
+            title  = r.get("title", "")
+            body   = r.get("body", "")[:400]
+            url_lower = url.lower()
+            domain = url.split("/")[2] if url and url.count("/") >= 2 else url
+
+            # FILTRO 1: Descartar spam obvio
+            if any(junk in url_lower for junk in _JUNK_PATTERNS):
+                continue
+
+            # FILTRO 2: Relevancia — whitelist dominio de la empresa, o debe mencionar el nombre
+            if company_domain and company_domain.lower() in url_lower:
+                pass  # La URL es del sitio de la empresa → siempre relevante
+            elif company_words:
+                combined = (title + ' ' + body + ' ' + url).lower()
+                if not any(word in combined for word in company_words):
+                    continue
+
+            filtered.append({
+                "title":            title,
+                "snippet":          body,
+                "url":              url,
+                "source":           domain,
+                "score":            1.0,
+                "valid":            None,
+                "validation_issues": [],
+                "mentions_company": True if company_words else None,
+            })
+
+        return filtered
+
+    # ── Intento 1: query original con más resultados ───────────────────
+    items = _fetch_and_filter(query, max_results * 4)
+
+    # ── Intento 2: si hay pocos resultados, reintentar con query simple ─
+    if len(items) < max_results and company_name:
+        time.sleep(random.uniform(1.5, 3.0))
+        # Extraer las keywords principales de la query original
+        extra_words = [w for w in query.split() if w.lower() not in [cn.lower() for cn in company_name.split()]]
+        simple_query = f'{company_name} {" ".join(extra_words[:3])}'
+        more = _fetch_and_filter(simple_query, max_results * 3)
+        # Agregar nuevos resultados que no estén duplicados
+        seen_urls = {i['url'] for i in items}
+        for m in more:
+            if m['url'] not in seen_urls:
+                items.append(m)
+                seen_urls.add(m['url'])
+
+    # Limitar al max_results
+    items = items[:max_results]
+
+    # Pausa para evitar rate-limiting
+    time.sleep(random.uniform(2.5, 5.0))
     return items
 
 # ─── VALIDADOR DE DATOS ───────────────────────────────────
@@ -188,6 +248,17 @@ def cross_validate(web_data: dict, company_name: str) -> dict:
 
 def search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
 
+    # Construir un nombre de búsqueda con contexto (ej: "Valero Energy company")
+    search_name = f'{company_name} {industry} company'
+
+    # Extraer dominio de company_url para whitelist (ej: "valero.com")
+    company_domain = ''
+    if company_url:
+        try:
+            company_domain = company_url.split('/')[2].replace('www.', '')
+        except (IndexError, AttributeError):
+            pass
+
     results = {
         'company': company_name,
         'company_url': company_url,
@@ -208,18 +279,18 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
     }
 
     searches = [
-        ('strategy_background', f'{company_name} corporate strategy business expansion 2024 2025', 'advanced'),
-        ('tech_environment',    f'{company_name} IT infrastructure technology stack cloud servers', 'advanced'),
-        ('pain_points',         f'{company_name} IT challenges technology problems legacy infrastructure', 'advanced'),
-        ('decision_makers',     f'{company_name} CTO CIO CEO CFO VP technology executives 2024 2025', 'basic'),
-        ('financial_signals',   f'{company_name} revenue earnings financial results investment 2024', 'basic'),
-        ('competitive_context', f'{company_name} competitors market position industry ranking', 'basic'),
+        ('strategy_background', f'{search_name} corporate strategy business expansion', 'advanced'),
+        ('tech_environment',    f'{search_name} IT infrastructure technology cloud servers', 'advanced'),
+        ('pain_points',         f'{search_name} IT challenges technology problems legacy', 'advanced'),
+        ('decision_makers',     f'{company_name} {industry} CTO CIO CEO technology executives', 'basic'),
+        ('financial_signals',   f'{company_name} {industry} revenue earnings financial results', 'basic'),
+        ('competitive_context', f'{company_name} {industry} competitors market position', 'basic'),
     ]
 
     # ── Ejecutar busquedas via DuckDuckGo + proxy corporativo ──
     for key, query, _depth in searches:
         try:
-            items = _ddg_search(query, max_results=5)
+            items = _ddg_search(query, max_results=5, company_name=company_name, company_domain=company_domain)
             for item in items:
                 if item['url']:
                     results['sources'].append(item['url'])
@@ -240,8 +311,10 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
     # ── Noticias recientes ──────────────────────────────
     try:
         news_items = _ddg_search(
-            f'{company_name} news announcement 2024 2025',
-            max_results=3
+            f'{company_name} {industry} latest news announcement',
+            max_results=5,
+            company_name=company_name,
+            company_domain=company_domain
         )
         for r in news_items:
             results['recent_news'].append({
@@ -278,7 +351,27 @@ def search_account(company_name: str, company_url: str = '', industry: str = 'Te
         'digital transformation', 'modernization', 'infrastructure'
     ]
     results['tech_keywords'] = ' '.join([kw for kw in tech_kws if kw.lower() in all_tech_text])
-    results['sources'] = list(dict.fromkeys([s for s in results['sources'] if s]))
+
+    # ── Limpiar fuentes: solo conservar URLs de items válidos ──
+    valid_urls = set()
+    for field in ['strategy_background', 'tech_environment', 'pain_points',
+                  'decision_makers', 'financial_signals', 'competitive_context']:
+        for item in results.get(field, []):
+            if item.get('valid') and item.get('url'):
+                valid_urls.add(item['url'])
+    # Si hay URLs válidas, usarlas; si no, conservar las originales filtradas
+    if valid_urls:
+        results['sources'] = list(valid_urls)[:15]
+    else:
+        # Filtrar fuentes que al menos mencionen la empresa
+        company_lower = company_name.lower()
+        company_words = [w for w in company_lower.split() if len(w) > 2]
+        filtered = []
+        for s in results['sources']:
+            s_lower = s.lower()
+            if any(w in s_lower for w in company_words):
+                filtered.append(s)
+        results['sources'] = list(dict.fromkeys(filtered))[:15] if filtered else []
 
     return results
 
