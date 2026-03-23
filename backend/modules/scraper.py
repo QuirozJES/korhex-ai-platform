@@ -2,7 +2,7 @@ import os
 import time
 import random
 import asyncio
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -25,25 +25,28 @@ _USER_AGENTS = [
 # Dominios irrelevantes a ignorar por defecto
 _BLACKLIST = [
     "calculator", "translate.google", "facebook.com", "instagram.com",
-    "twitter.com", "x.com", "tiktok.com", "youtube.com", "pinterest.com"
+    "twitter.com", "x.com", "tiktok.com", "youtube.com", "pinterest.com",
+    "zhihu.com", "quora.com", "reddit.com", "medium.com", "wikipedia.org",
+    "glassdoor.com", "indeed.com", "stackoverflow.com", "stackexchange.com",
+    "github.com", "ycombinator.com", "yahoo.com"
 ]
 
 def _ddgs_client() -> DDGS:
-    """Crea un cliente DDG con proxy corporativo y User-Agent rotativo."""
+    """Crea un cliente DDG compatible con la nueva librería ddgs."""
     return DDGS(
-        headers={"User-Agent": random.choice(_USER_AGENTS)},
-        proxies=_PROXY,   # None → conexión directa (modo dev sin proxy)
-        timeout=20,
+        proxy=_PROXY,
+        timeout=20
     )
 
-def _normalize_results(raw: list) -> list[dict]:
-    """Normaliza resultados DDG al formato interno."""
+def _normalize_results(raw: list, company_domain: str = "") -> list[dict]:
+    """Normaliza resultados DDG al formato interno y aplica un filtro fuerte de blacklist (Cualquier blog B2B pasa)."""
     items = []
     for r in (raw or []):
         url    = r.get("href", "")
-        domain = url.split("/")[2] if url and "/" in url else url
+        domain = url.split("/")[2].lower() if url and "/" in url else url.lower()
 
-        if any(bad in domain.lower() for bad in _BLACKLIST):
+        # Descartar si coincide con la blacklist (foros, wikis, redes sociales, etc)
+        if any(bad in domain for bad in _BLACKLIST):
             continue
 
         items.append({
@@ -60,10 +63,11 @@ def _normalize_results(raw: list) -> list[dict]:
 
 # ─── ASYNC SEARCH ─────────────────────────────────────────────
 
-async def _async_ddg_search(query: str, max_results: int = 5) -> list[dict]:
+async def _async_ddg_search(query: str, max_results: int = 5, company_domain: str = "") -> list[dict]:
     """
     Versión async de la búsqueda DDG.
     Corre el bloqueo de red en un thread pool para no bloquear el event loop.
+    Busca más resultados (15) para tener margen tras filtrar por dominios oficiales.
     """
     loop = asyncio.get_running_loop()
 
@@ -71,19 +75,22 @@ async def _async_ddg_search(query: str, max_results: int = 5) -> list[dict]:
         # Delay aleatorio ANTES de la petición para evitar que las 6 lleguen al mismo milisegundo a DDG
         time.sleep(random.uniform(0.5, 3.5))
         client = _ddgs_client()
-        raw = client.text(query, max_results=max_results, region='wt-wt')
+        # Buscamos un poco extra (15) dado que descartaremos los no oficiales
+        raw = client.text(query, max_results=15, region='wt-wt')
         return raw
 
     raw = await loop.run_in_executor(None, _blocking_search)
-    return _normalize_results(raw)
+    filtered_items = _normalize_results(raw, company_domain)
+    # Retornar max_results permitidos
+    return filtered_items[:max_results]
 
-async def _fetch_with_timeout(query: str, max_results: int = 5, timeout: float = 15.0) -> list[dict]:
+async def _fetch_with_timeout(query: str, max_results: int = 5, timeout: float = 15.0, company_domain: str = "") -> list[dict]:
     """
     Ejecuta _async_ddg_search con timeout. Si timeout ocurre, retorna lista vacía.
     Target: reduce total scraping time from ~30s to ~8s.
     """
     try:
-        return await asyncio.wait_for(_async_ddg_search(query, max_results), timeout=timeout)
+        return await asyncio.wait_for(_async_ddg_search(query, max_results, company_domain), timeout=timeout)
     except asyncio.TimeoutError:
         print(f"[Scraper] TIMEOUT for query: {query}")
         return []
@@ -98,6 +105,12 @@ async def _async_search_account(company_name: str, company_url: str = '', indust
     Versión completamente async de search_account().
     Dispara las 6 búsquedas de inteligencia en PARALELO con asyncio.gather().
     """
+    import urllib.parse
+    company_domain = ""
+    if company_url:
+        parsed = urllib.parse.urlparse(company_url)
+        company_domain = parsed.netloc.lower().replace("www.", "")
+
     results = {
         'company':            company_name,
         'company_url':        company_url,
@@ -127,7 +140,7 @@ async def _async_search_account(company_name: str, company_url: str = '', indust
     ]
 
     # ── Búsquedas principales en PARALELO ──
-    tasks = [_fetch_with_timeout(q, n, 10.0) for (_, q, n) in queries]
+    tasks = [_fetch_with_timeout(q, n, 10.0, company_domain) for (_, q, n) in queries]
     task_results = await asyncio.gather(*tasks)
 
     for (key, _q, _n), items in zip(queries, task_results):
@@ -138,7 +151,7 @@ async def _async_search_account(company_name: str, company_url: str = '', indust
 
     # ── Noticias recientes (paralelo implícito vía gather en un solo item) ──
     news_items = await _fetch_with_timeout(
-        f'"{company_name}" news announcement 2024', 3, 10.0
+        f'"{company_name}" news announcement 2024', 3, 10.0, company_domain
     )
     
     company_words = [w.lower() for w in company_name.split() if w.strip()]
