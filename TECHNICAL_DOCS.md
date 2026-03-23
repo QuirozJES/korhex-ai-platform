@@ -93,9 +93,10 @@ Se encarga de buscar información pública sobre una empresa en DuckDuckGo y org
 6. **Competitive Context** — Posición en el mercado y competidores
 
 **Mejoras aplicadas en v3:**
-- `region='wt-wt'` fuerza resultados globales neutros (evita resultados localizados basura)
-- Lista negra de dominios que filtra redes sociales, calculadoras y traductores
-- Delay aumentado a `2.5–5.0s` entre peticiones para evitar bloqueos de DuckDuckGo
+- Migración de la librería base a `ddgs` debido al deprecado forzoso de `duckduckgo_search`.
+- Incremento del "fetch buffer" a `max_results=15` por cada categoría para poder aplicar filtros de limpieza severos posteriores y rescatar el Top 5 más puro.
+- **Lista Negra Agresiva (Blacklist):** Un filtro estricto posterior a la búsqueda descarta instantáneamente foros genéricos (Zhihu, Quora, Reddit), redes sociales y wikis, asegurando que solo los blogs B2B, noticias financieras y páginas corporativas alimenten a los agentes de IA.
+- Delay aleatorio `0.5–3.5s` escalonado entre peticiones asíncronas concurrentes para evadir baneos.
 
 ---
 

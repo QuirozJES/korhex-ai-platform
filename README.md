@@ -67,8 +67,8 @@ KORHEX.AI is built on a modern, fully decoupled, async-first stack:
 
 ## Key Technical Highlights
 
-**⚡ Parallel Async Scraping**
-All 6 intelligence queries run simultaneously via `asyncio.gather()`, reducing total scraping time from ~30 seconds to ~8 seconds.
+**⚡ Parallel Async Scraping & Domain Filtering**
+All 6 intelligence queries run simultaneously via `asyncio.gather()`, reducing total scraping time from ~30s to ~8s. Fetching 15 results initially and stripping out all Blacklisted domains (consumer forums, Q&As like Zhihu/Quora) ensures only B2B quality web entries reach the AI.
 
 **🗄️ Smart SQLite Cache**
 Results are cached for 24 hours using WAL mode (safe for concurrent reads). Repeat analyses are returned instantly without re-running the LLM or scraper.
