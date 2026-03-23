@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
@@ -6,29 +6,30 @@ import {
   TrendingUp, Target, AlertTriangle, Loader2, CheckCircle,
   FileText, Mic2, Package, Lock, Activity, Cpu, Users,
   DollarSign, BarChart2, ExternalLink, Globe, ChevronRight,
-  Eye, User, Languages, Download, Save, Bell, Trash2, XCircle
+  Eye, User, Languages, Download, Save, Bell, Trash2, XCircle,
+  Copy, RefreshCw, Clock
 } from 'lucide-react';
 
 // ─── Utilities ─────────────────────────────────────────────────────────────
 const SECTION_META = [
-  { tag: 'SECTION_1', label: 'Business Strategy',   icon: TrendingUp,    color: 'emerald' },
-  { tag: 'SECTION_2', label: 'Tech Environment',    icon: Cpu,           color: 'blue'    },
-  { tag: 'SECTION_3', label: 'Pain Points',         icon: AlertTriangle, color: 'orange'  },
-  { tag: 'SECTION_4', label: 'Decision Makers',     icon: Users,         color: 'purple'  },
-  { tag: 'SECTION_5', label: 'Financial Signals',   icon: DollarSign,    color: 'yellow'  },
-  { tag: 'SECTION_6', label: 'Competitive Context', icon: BarChart2,     color: 'rose'    },
+  { tag: 'SECTION_1', label: 'Business Strategy', icon: TrendingUp, color: 'emerald' },
+  { tag: 'SECTION_2', label: 'Tech Environment', icon: Cpu, color: 'blue' },
+  { tag: 'SECTION_3', label: 'Pain Points', icon: AlertTriangle, color: 'orange' },
+  { tag: 'SECTION_4', label: 'Decision Makers', icon: Users, color: 'purple' },
+  { tag: 'SECTION_5', label: 'Financial Signals', icon: DollarSign, color: 'yellow' },
+  { tag: 'SECTION_6', label: 'Competitive Context', icon: BarChart2, color: 'rose' },
 ];
 const ICON_COLOR = {
-  emerald:'text-hpe-green', blue:'text-blue-400', orange:'text-orange-400',
-  purple:'text-purple-400',   yellow:'text-yellow-400', rose:'text-rose-400',
+  emerald: 'text-hpe-green', blue: 'text-blue-400', orange: 'text-orange-400',
+  purple: 'text-purple-400', yellow: 'text-yellow-400', rose: 'text-rose-400',
 };
 
 function parseSections(text = '') {
   const sections = {};
   SECTION_META.forEach(({ tag }, idx) => {
-    const next  = SECTION_META[idx + 1]?.tag;
+    const next = SECTION_META[idx + 1]?.tag;
     // Llama 3 sometimes omits brackets: match both [SECTION_N] and SECTION_N
-    const re    = new RegExp(`\\[?${tag}\\]?([\\s\\S]*?)${next ? `\\[?${next}\\]?` : '$'}`, 'i');
+    const re = new RegExp(`\\[?${tag}\\]?([\\s\\S]*?)${next ? `\\[?${next}\\]?` : '$'}`, 'i');
     const match = text.match(re);
     sections[tag] = match ? match[1].trim() : '';
   });
@@ -37,7 +38,7 @@ function parseSections(text = '') {
 
 // ─── Circular Score ────────────────────────────────────────────────────────
 function CircularScore({ score }) {
-  const r    = 40;
+  const r = 40;
   const circ = 2 * Math.PI * r;
   const dash = circ - (score / 100) * circ;
   const color = score >= 70 ? '#10b981' : score >= 40 ? '#f97316' : '#10b981';
@@ -47,9 +48,125 @@ function CircularScore({ score }) {
         <circle cx="50" cy="50" r={r} fill="none" stroke="#1e293b" strokeWidth="10" />
         <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="10"
           strokeDasharray={circ} strokeDashoffset={dash} strokeLinecap="round"
-          style={{ filter:`drop-shadow(0 0 6px ${color})`, transition:'stroke-dashoffset 0.8s ease' }} />
+          style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dashoffset 0.8s ease' }} />
       </svg>
       <span className="absolute text-xl font-black text-white">{score}</span>
+    </div>
+  );
+}
+
+// ─── IMPROVEMENT 7: Lead Score Breakdown ───────────────────────────────────
+function ScoreBreakdown({ factors }) {
+  const bars = [
+    { label: 'Inactivity Factor', key: 'Inactivity Factor', max: 40 },
+    { label: 'Tech Signals', key: 'Tech Initiatives', max: 25 },
+    { label: 'Pain Points', key: 'Pain Points Detected', max: 25 },
+    { label: 'Recent Activity', key: 'Recent Activity', max: 10 },
+  ];
+
+  const barColor = (value, max) => {
+    const pct = max > 0 ? value / max : 0;
+    if (pct >= 0.7) return 'bg-emerald-500';
+    if (pct >= 0.4) return 'bg-orange-400';
+    return 'bg-red-500';
+  };
+
+  return (
+    <div className="bg-hpe-bg border border-hpe-border rounded-xl p-4 mt-3">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Score Breakdown</p>
+      <div className="space-y-2.5">
+        {bars.map(({ label, key, max }) => {
+          const value = factors?.[key] ?? 0;
+          const pct = Math.min((value / max) * 100, 100);
+          return (
+            <div key={key}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">{label}</span>
+                <span className="text-slate-300 font-mono">{value}/{max}</span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-1.5 rounded-full ${barColor(value, max)}`}
+                  style={{ width: `${pct}%`, transition: 'width 0.8s ease-out' }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── IMPROVEMENT 6: Live Pipeline Tracker ──────────────────────────────────
+const PIPELINE_STEPS = [
+  { id: 'scraping', label: 'Searching public intelligence...' },
+  { id: 'rag', label: 'Validating 6 data elements...' },
+  { id: 'agents', label: 'Running Account Executive Agent...' },
+  { id: 'auditor', label: 'Running Compliance Auditor...' },
+  { id: 'scoring', label: 'Calculating Lead Score...' },
+];
+
+function PipelineTracker({ steps }) {
+  return (
+    <div className="w-full space-y-2 px-2">
+      {PIPELINE_STEPS.map((s) => {
+        const st = steps[s.id] || 'pending';
+        return (
+          <div key={s.id} className="flex items-center space-x-3">
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              {st === 'done' && <CheckCircle className="w-4 h-4 text-[#22c55e]" />}
+              {st === 'active' && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
+              {st === 'pending' && <div className="w-3 h-3 rounded-full border border-slate-600" />}
+              {st === 'error' && <XCircle className="w-4 h-4 text-red-400" />}
+            </div>
+            <span className={`text-xs ${st === 'done' ? 'text-[#22c55e]'
+                : st === 'active' ? 'text-cyan-300 animate-pulse'
+                  : st === 'error' ? 'text-red-400'
+                    : 'text-slate-500'
+              }`}>
+              {s.label}
+            </span>
+            {st === 'active' && (
+              <span className="text-xs text-slate-600 font-mono ml-auto">(in progress...)</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── IMPROVEMENT 8C: Data Freshness Indicator ──────────────────────────────
+function FreshnessIndicator({ timestamp, onRefresh }) {
+  if (!timestamp) return null;
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHrs = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 60) {
+    return (
+      <div className="flex items-center space-x-1.5 text-xs text-emerald-400 mb-3">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span>Fresh data · {diffMins < 1 ? 'just now' : `${diffMins}m ago`}</span>
+      </div>
+    );
+  }
+  if (diffHrs < 24) {
+    return (
+      <div className="flex items-center space-x-1.5 text-xs text-yellow-400 mb-3">
+        <span className="w-2 h-2 rounded-full bg-yellow-400" />
+        <span>Data from {diffHrs}h ago ·{' '}
+          <button onClick={onRefresh} className="underline hover:text-yellow-200 transition-colors">Refresh?</button>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center space-x-1.5 text-xs text-red-400 mb-3">
+      <span className="w-2 h-2 rounded-full bg-red-400" />
+      <span>Stale data · Refresh recommended</span>
     </div>
   );
 }
@@ -60,16 +177,17 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
     <button onClick={onClick}
       className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap
         ${active ? 'bg-hpe-green/20 text-hpe-green border border-hpe-green/30'
-                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}`}>
+          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}`}>
       <Icon className="w-3.5 h-3.5" /><span>{label}</span>
     </button>
   );
 }
 
 // ─── Result Tabs ───────────────────────────────────────────────────────────
-function OverviewTab({ result }) {
+function OverviewTab({ result, timestamp, onRefresh }) {
   return (
     <div className="space-y-3">
+      <FreshnessIndicator timestamp={timestamp} onRefresh={onRefresh} />
       <div className="bg-hpe-bg border border-hpe-border rounded-xl p-5 flex items-center justify-between">
         <div>
           <p className="text-slate-400 text-xs font-mono uppercase tracking-widest mb-1">Net New Lead Score</p>
@@ -80,14 +198,15 @@ function OverviewTab({ result }) {
         </div>
         <CircularScore score={result.lead_score} />
       </div>
+      {result._scoreFactors && <ScoreBreakdown factors={result._scoreFactors} />}
       <div className="flex flex-wrap gap-2">
         <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-semibold border uppercase
-          ${result.data_quality==='HIGH' ? 'text-hpe-green bg-hpe-green/10 border-hpe-green/30'
-          : result.data_quality==='MEDIUM' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
-          : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
+          ${result.data_quality === 'HIGH' ? 'text-hpe-green bg-hpe-green/10 border-hpe-green/30'
+            : result.data_quality === 'MEDIUM' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
+              : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
           {result.data_quality} Quality
         </span>
-        {result.tech_keywords && result.tech_keywords.split(' ').slice(0,5).map(kw => (
+        {result.tech_keywords && result.tech_keywords.split(' ').slice(0, 5).map(kw => (
           <span key={kw} className="px-2 py-0.5 bg-slate-800 text-slate-400 text-xs rounded border border-hpe-border">{kw}</span>
         ))}
       </div>
@@ -102,7 +221,7 @@ function OverviewTab({ result }) {
             <Globe className="w-3.5 h-3.5 text-hpe-green" /><span>Recent News</span>
           </p>
           <div className="space-y-2">
-            {result.recent_news.map((n,i) => (
+            {result.recent_news.map((n, i) => (
               <a key={i} href={n.url} target="_blank" rel="noreferrer"
                 className="flex items-start space-x-2 p-2.5 rounded-lg bg-slate-800/40 hover:bg-slate-700/40 transition-colors group">
                 <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-hpe-green shrink-0 mt-0.5 transition-colors" />
@@ -121,7 +240,7 @@ function OverviewTab({ result }) {
 
 function IntelligenceTab({ result }) {
   const sections = parseSections(result.intelligence_report);
-  const hasAny   = Object.values(sections).some(Boolean);
+  const hasAny = Object.values(sections).some(Boolean);
   return (
     <div className="space-y-3">
       {SECTION_META.map(({ tag, label, icon: Icon, color }) =>
@@ -149,7 +268,7 @@ function SpeechTab({ result }) {
       <div className="flex items-center justify-between">
         <span className={`flex items-center space-x-1.5 text-xs font-semibold px-3 py-1 rounded-full border
           ${result.audit_passed ? 'text-hpe-green bg-hpe-green/10 border-hpe-green/30'
-                                : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
+            : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
           {result.audit_passed ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
           <span>{result.audit_passed ? 'Audit Passed' : 'Audit Failed'}</span>
         </span>
@@ -168,7 +287,7 @@ function ProductsTab({ result }) {
     return <div className="text-center text-slate-500 py-12 text-sm">No products matched for this account.</div>;
   return (
     <div className="space-y-3">
-      {result.products.map((p,i) => (
+      {result.products.map((p, i) => (
         <div key={i} className="bg-hpe-bg border border-hpe-border rounded-xl p-4 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-0.5 h-full bg-hpe-green" />
           <div className="pl-3">
@@ -203,7 +322,7 @@ function AuditTab({ result }) {
     <div className="space-y-3">
       <div className={`flex items-center space-x-3 p-4 rounded-xl border
         ${result.audit_passed ? 'bg-hpe-green/10 border-hpe-green/30 text-hpe-green'
-                              : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+          : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
         {result.audit_passed ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
         <div>
           <p className="font-bold text-sm">{result.audit_passed ? 'Compliance Audit Passed' : 'Compliance Audit Failed'}</p>
@@ -228,7 +347,7 @@ function AuditTab({ result }) {
             <Lock className="w-3.5 h-3.5 text-hpe-green" /><span>Sources Used</span>
           </p>
           <ul className="space-y-1.5">
-            {result.sources.map((src,i) => (
+            {result.sources.map((src, i) => (
               <li key={i}>
                 <a href={src} target="_blank" rel="noreferrer"
                   className="flex items-center space-x-2 text-slate-400 hover:text-hpe-green text-xs transition-colors">
@@ -268,7 +387,7 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
         <label className="block text-xs text-slate-400 mb-1.5">Industry</label>
         <select name="industry" value={formData.industry} onChange={onChange} disabled={loading}
           className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 transition-all disabled:opacity-50">
-          {['Technology','Finance','Healthcare','Manufacturing','Retail','Energy','Telecommunications'].map(i => (
+          {['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Energy', 'Telecommunications'].map(i => (
             <option key={i} value={i}>{i}</option>
           ))}
         </select>
@@ -284,11 +403,17 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
 
       {/* Submit + Cancel */}
       <div className={`grid gap-2 ${loading ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        <button type="submit" disabled={loading}
-          className="bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
-          {loading
-            ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
-            : <><Search className="w-4 h-4" /><span>Execute Intelligence Agents</span></>}
+        <button id="btn-execute" type="submit" disabled={loading}
+          className="w-full bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+          {loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
+          ) : (
+            <>
+              <Search className="w-4 h-4" />
+              <span>Execute Intelligence Agents</span>
+              <span className="ml-3 text-[10px] font-mono opacity-40 hidden sm:inline">Ctrl+Enter</span>
+            </>
+          )}
         </button>
         {loading && (
           <button type="button" onClick={onCancel}
@@ -311,18 +436,18 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
 }
 
 // ─── PAGES ─────────────────────────────────────────────────────────────────
-function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, history, onDelete, onView, prefs, resultsRef, onExport, isExporting }) {
+function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, history, onDelete, onView, prefs, resultsRef, onExport, isExporting, pipelineSteps, onReanalyze }) {
   const TABS = [
-    { id:'overview',     label:'Overview',      icon:Activity  },
-    { id:'intelligence', label:'Intelligence',  icon:FileText  },
-    { id:'speech',       label:'Sales Speech',  icon:Mic2      },
-    { id:'products',     label:'Products',      icon:Package   },
-    { id:'audit',        label:'Privacy Audit', icon:Lock      },
+    { id: 'overview', label: 'Overview', icon: Activity },
+    { id: 'intelligence', label: 'Intelligence', icon: FileText },
+    { id: 'speech', label: 'Sales Speech', icon: Mic2 },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'audit', label: 'Privacy Audit', icon: Lock },
   ];
   const stats = {
-    analyzed:      history.length,
+    analyzed: history.length,
     opportunities: history.filter(h => h.score >= 40).length,
-    risks:         history.filter(h => h.score < 40).length,
+    risks: history.filter(h => h.score < 40).length,
   };
   return (
     <div className="space-y-5">
@@ -333,10 +458,10 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label:'Accounts Analyzed',    sub:'This month', value:stats.analyzed,      icon:Target,         pct:'+12%', pos:true  },
-          { label:'Sales Opportunities',  sub:'Detected',   value:stats.opportunities, icon:TrendingUp,     pct:'+8%',  pos:true  },
-          { label:'Risk Alerts',          sub:'Active',     value:stats.risks,         icon:AlertTriangle,  pct:`-${stats.risks}`, pos:false },
-        ].map(({ label,sub,value,icon:Icon,pct,pos }) => (
+          { label: 'Accounts Analyzed', sub: 'This month', value: stats.analyzed, icon: Target, pct: '+12%', pos: true },
+          { label: 'Sales Opportunities', sub: 'Detected', value: stats.opportunities, icon: TrendingUp, pct: '+8%', pos: true },
+          { label: 'Risk Alerts', sub: 'Active', value: stats.risks, icon: AlertTriangle, pct: `-${stats.risks}`, pos: false },
+        ].map(({ label, sub, value, icon: Icon, pct, pos }) => (
           <div key={label} className="bg-hpe-panel border border-hpe-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
@@ -369,32 +494,29 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
             {result && !loading && (
               <button onClick={onExport} disabled={isExporting}
                 className="flex items-center space-x-1 text-xs px-3 py-1.5 rounded-md bg-hpe-bg border border-hpe-border text-slate-300 hover:text-hpe-green hover:border-hpe-green/50 transition-colors disabled:opacity-50">
-                {isExporting ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3" />}
+                {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                 <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
               </button>
             )}
           </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[350px] space-y-4">
-              <Activity className="w-10 h-10 text-hpe-green animate-pulse" />
-              <div className="text-center">
-                <p className="text-slate-200 text-sm font-medium">Orchestrating CrewAI Agents</p>
-                <p className="text-slate-500 text-xs mt-1 animate-pulse">Llama 3 analyzing account intelligence locally...</p>
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[350px] space-y-4 w-full px-6">
+              <Activity className="w-8 h-8 text-hpe-green animate-pulse" />
+              <PipelineTracker steps={pipelineSteps} />
             </div>
           ) : result ? (
             <div className="space-y-3" ref={resultsRef}>
               <div className="flex items-center space-x-1 bg-hpe-bg border border-hpe-border rounded-lg p-1 overflow-x-auto">
                 {TABS.map(t => (
-                  <TabBtn key={t.id} active={activeTab===t.id} onClick={() => setActiveTab(t.id)} icon={t.icon} label={t.label} />
+                  <TabBtn key={t.id} active={activeTab === t.id} onClick={() => setActiveTab(t.id)} icon={t.icon} label={t.label} />
                 ))}
               </div>
               <div className="max-h-[460px] overflow-y-auto pr-1 custom-scroll">
-                {activeTab==='overview'     && <OverviewTab     result={result} />}
-                {activeTab==='intelligence' && <IntelligenceTab result={result} />}
-                {activeTab==='speech'       && <SpeechTab       result={result} />}
-                {activeTab==='products'     && <ProductsTab     result={result} />}
-                {activeTab==='audit'        && <AuditTab        result={result} />}
+                {activeTab === 'overview' && <OverviewTab result={result} timestamp={result._timestamp} onRefresh={onReanalyze} />}
+                {activeTab === 'intelligence' && <IntelligenceTab result={result} />}
+                {activeTab === 'speech' && <SpeechTab result={result} />}
+                {activeTab === 'products' && <ProductsTab result={result} />}
+                {activeTab === 'audit' && <AuditTab result={result} />}
               </div>
             </div>
           ) : (
@@ -411,20 +533,20 @@ function DashboardPage({ formData, onChange, onSubmit, onCancel, loading, error,
           <h2 className="text-sm font-semibold text-slate-200 flex items-center space-x-2 mb-4">
             <History className="w-4 h-4 text-hpe-green" /><span>Investigation History</span>
           </h2>
-          <HistoryTable history={history} onDelete={onDelete} onView={onView} />
+          <HistoryTable history={history} onDelete={onDelete} onView={onView} onReanalyze={onReanalyze} />
         </div>
       )}
     </div>
   );
 }
 
-function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, resultsRef, onExport, isExporting }) {
+function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading, error, result, activeTab, setActiveTab, resultsRef, onExport, isExporting, pipelineSteps, onReanalyze }) {
   const TABS = [
-    { id:'overview',     label:'Overview',      icon:Activity  },
-    { id:'intelligence', label:'Intelligence',  icon:FileText  },
-    { id:'speech',       label:'Sales Speech',  icon:Mic2      },
-    { id:'products',     label:'Products',      icon:Package   },
-    { id:'audit',        label:'Privacy Audit', icon:Lock      },
+    { id: 'overview', label: 'Overview', icon: Activity },
+    { id: 'intelligence', label: 'Intelligence', icon: FileText },
+    { id: 'speech', label: 'Sales Speech', icon: Mic2 },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'audit', label: 'Privacy Audit', icon: Lock },
   ];
   return (
     <div className="space-y-5">
@@ -442,9 +564,9 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
             onCancel={onCancel} loading={loading} error={error} compact={false} />
           <div className="mt-6 pt-5 border-t border-hpe-border space-y-2">
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-widest">Pipeline</p>
-            {['DuckDuckGo Web Scraping','RAG Portfolio Matching','CrewAI Dual Agent','Llama 3 — Ollama local','Lead Scoring Engine'].map((s,i) => (
+            {['DuckDuckGo Web Scraping', 'RAG Portfolio Matching', 'CrewAI Dual Agent', 'Llama 3 — Ollama local', 'Lead Scoring Engine'].map((s, i) => (
               <div key={s} className="flex items-center space-x-2 text-xs text-slate-400">
-                <div className="w-5 h-5 rounded-full bg-hpe-green/20 border border-hpe-green/30 flex items-center justify-center text-hpe-green font-bold text-xs shrink-0">{i+1}</div>
+                <div className="w-5 h-5 rounded-full bg-hpe-green/20 border border-hpe-green/30 flex items-center justify-center text-hpe-green font-bold text-xs shrink-0">{i + 1}</div>
                 <span>{s}</span>
               </div>
             ))}
@@ -459,32 +581,29 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
             {result && !loading && (
               <button onClick={onExport} disabled={isExporting}
                 className="flex items-center space-x-1 text-xs px-3 py-1.5 rounded-md bg-hpe-bg border border-hpe-border text-slate-300 hover:text-hpe-green hover:border-hpe-green/50 transition-colors disabled:opacity-50">
-                {isExporting ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3" />}
+                {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                 <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
               </button>
             )}
           </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-              <Activity className="w-12 h-12 text-hpe-green animate-pulse" />
-              <div className="text-center">
-                <p className="text-slate-200 text-sm font-medium">Orchestrating CrewAI Agents</p>
-                <p className="text-slate-500 text-xs mt-1 animate-pulse">Llama 3 analyzing account intelligence locally...</p>
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 w-full px-6">
+              <Activity className="w-8 h-8 text-hpe-green animate-pulse" />
+              <PipelineTracker steps={pipelineSteps} />
             </div>
           ) : result ? (
             <div className="space-y-3" ref={resultsRef}>
               <div className="flex items-center space-x-1 bg-hpe-bg border border-hpe-border rounded-lg p-1 overflow-x-auto">
                 {TABS.map(t => (
-                  <TabBtn key={t.id} active={activeTab===t.id} onClick={() => setActiveTab(t.id)} icon={t.icon} label={t.label} />
+                  <TabBtn key={t.id} active={activeTab === t.id} onClick={() => setActiveTab(t.id)} icon={t.icon} label={t.label} />
                 ))}
               </div>
               <div className="max-h-[500px] overflow-y-auto pr-1 custom-scroll">
-                {activeTab==='overview'     && <OverviewTab     result={result} />}
-                {activeTab==='intelligence' && <IntelligenceTab result={result} />}
-                {activeTab==='speech'       && <SpeechTab       result={result} />}
-                {activeTab==='products'     && <ProductsTab     result={result} />}
-                {activeTab==='audit'        && <AuditTab        result={result} />}
+                {activeTab === 'overview' && <OverviewTab result={result} timestamp={result._timestamp} onRefresh={onReanalyze} />}
+                {activeTab === 'intelligence' && <IntelligenceTab result={result} />}
+                {activeTab === 'speech' && <SpeechTab result={result} />}
+                {activeTab === 'products' && <ProductsTab result={result} />}
+                {activeTab === 'audit' && <AuditTab result={result} />}
               </div>
             </div>
           ) : (
@@ -499,26 +618,38 @@ function NewInvestigationPage({ formData, onChange, onSubmit, onCancel, loading,
   );
 }
 
-function HistoryTable({ history, onDelete, onView }) {
+// ─── IMPROVEMENT 8A: History Table with Re-analyze + Copy Speech ──────────
+function HistoryTable({ history, onDelete, onView, onReanalyze }) {
+  const [copiedIdx, setCopiedIdx] = useState(null);
+
+  const handleCopy = (h, i) => {
+    const text = h.fullData?.sales_speech || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(i);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-slate-500 border-b border-hpe-border">
-            {['Company','Industry','Lead Score','Status','Action'].map(col => (
+            {['Company', 'Industry', 'Lead Score', 'Status', 'Actions'].map(col => (
               <th key={col} className="pb-2.5 text-left font-medium pr-4">{col}</th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800/40">
-          {history.map((h,i) => (
+          {history.map((h, i) => (
             <tr key={i} className="hover:bg-slate-800/20 transition-colors group">
               <td className="py-3 pr-4 font-semibold text-slate-200">{h.company}</td>
               <td className="py-3 pr-4 text-slate-400">{h.industry}</td>
               <td className="py-3 pr-4">
                 <div className="flex items-center space-x-2">
                   <div className="flex-1 bg-slate-800 rounded-full h-1.5 w-16">
-                    <div className="h-1.5 rounded-full bg-hpe-green transition-all" style={{ width:`${h.score}%` }} />
+                    <div className="h-1.5 rounded-full bg-hpe-green transition-all" style={{ width: `${h.score}%` }} />
                   </div>
                   <span className="text-slate-300 font-mono">{h.score}</span>
                 </div>
@@ -528,15 +659,30 @@ function HistoryTable({ history, onDelete, onView }) {
                   {h.status}
                 </span>
               </td>
-              <td className="py-2 pr-4">
-                <div className="flex items-center space-x-3">
-                  <button onClick={() => onView(i)} className="flex py-1 px-2 items-center space-x-1.5 text-slate-400 focus:outline-none hover:text-hpe-green hover:bg-hpe-green/10 rounded transition-all">
-                    <Eye className="w-4 h-4" /><span className="font-medium">View Report</span>
+              <td className="py-2 pr-2">
+                <div className="flex items-center space-x-1 flex-wrap gap-y-1">
+                  <button onClick={() => onView(i)}
+                    className="flex py-1 px-2 items-center space-x-1 text-slate-400 focus:outline-none hover:text-hpe-green hover:bg-hpe-green/10 rounded transition-all">
+                    <Eye className="w-3.5 h-3.5" /><span className="font-medium">View</span>
+                  </button>
+                  <button onClick={() => onReanalyze(i)}
+                    title="Re-analyze this account"
+                    className="flex py-1 px-2 items-center space-x-1 text-slate-400 focus:outline-none hover:text-cyan-400 hover:bg-cyan-400/10 rounded transition-all">
+                    <RefreshCw className="w-3.5 h-3.5" /><span className="font-medium">Re-analyze</span>
+                  </button>
+                  <button onClick={() => handleCopy(h, i)}
+                    title="Copy sales speech"
+                    className={`flex py-1 px-2 items-center space-x-1 rounded transition-all focus:outline-none ${copiedIdx === i
+                        ? 'text-emerald-400 bg-emerald-400/10'
+                        : 'text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10'
+                      }`}>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span className="font-medium">{copiedIdx === i ? 'Copied!' : 'Copy Speech'}</span>
                   </button>
                   <button onClick={() => onDelete(i)}
                     title="Delete this entry"
                     className="flex p-1.5 items-center justify-center rounded text-slate-600 focus:outline-none hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </td>
@@ -557,7 +703,7 @@ function HistoryPage({ history, onDelete, onView }) {
       </div>
       <div className="bg-hpe-panel border border-hpe-border rounded-xl p-5">
         {history.length > 0
-          ? <HistoryTable history={history} onDelete={onDelete} onView={onView} />
+          ? <HistoryTable history={history} onDelete={onDelete} onView={onView} onReanalyze={() => { }} />
           : (
             <div className="flex flex-col items-center justify-center py-20 space-y-3 opacity-40">
               <History className="w-14 h-14 text-slate-600" />
@@ -570,8 +716,8 @@ function HistoryPage({ history, onDelete, onView }) {
 }
 
 function UserPreferencesPage({ prefs, onSave }) {
-  const [form, setForm]     = useState({ ...prefs });
-  const [saved, setSaved]   = useState(false);
+  const [form, setForm] = useState({ ...prefs });
+  const [saved, setSaved] = useState(false);
 
   const handleChange = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
@@ -608,7 +754,7 @@ function UserPreferencesPage({ prefs, onSave }) {
           <label className="block text-xs text-slate-400 mb-1.5">Role</label>
           <select value={form.role} onChange={e => handleChange('role', e.target.value)}
             className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 transition-all">
-            {['Account Manager','Sales Executive','Sales Engineer','Team Lead','Director'].map(r => (
+            {['Account Manager', 'Sales Executive', 'Sales Engineer', 'Team Lead', 'Director'].map(r => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
@@ -624,7 +770,7 @@ function UserPreferencesPage({ prefs, onSave }) {
           <label className="block text-xs text-slate-400 mb-1.5">Default Industry</label>
           <select value={form.defaultIndustry} onChange={e => handleChange('defaultIndustry', e.target.value)}
             className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-hpe-green/40 transition-all">
-            {['Technology','Finance','Healthcare','Manufacturing','Retail','Energy','Telecommunications'].map(i => (
+            {['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Energy', 'Telecommunications'].map(i => (
               <option key={i} value={i}>{i}</option>
             ))}
           </select>
@@ -649,7 +795,7 @@ function UserPreferencesPage({ prefs, onSave }) {
         <div>
           <label className="block text-xs text-slate-400 mb-2">Report Language</label>
           <div className="flex space-x-2">
-            {['English','Spanish'].map(lang => (
+            {['English', 'Spanish'].map(lang => (
               <button key={lang} type="button"
                 onClick={() => handleChange('reportLang', lang)}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
@@ -668,18 +814,15 @@ function UserPreferencesPage({ prefs, onSave }) {
             <p className="text-slate-500 text-xs">Display the 5-step agent pipeline on New Investigation page</p>
           </div>
           <button type="button" onClick={() => handleChange('showPipeline', !form.showPipeline)}
-            className={`w-11 h-6 rounded-full transition-all relative ${
-              form.showPipeline ? 'bg-hpe-green' : 'bg-slate-700'}`}>
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
-              form.showPipeline ? 'left-5.5 translate-x-0.5' : 'left-0.5'}`} />
+            className={`w-11 h-6 rounded-full transition-all relative ${form.showPipeline ? 'bg-hpe-green' : 'bg-slate-700'}`}>
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.showPipeline ? 'left-5.5 translate-x-0.5' : 'left-0.5'}`} />
           </button>
         </div>
       </div>
 
       {/* Save Button */}
       <button onClick={handleSave}
-        className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${
-          saved
+        className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all ${saved
             ? 'bg-hpe-green/20 text-hpe-green border border-hpe-green/40'
             : 'bg-hpe-green hover:bg-hpe-green-hover text-slate-900 shadow-[0_0_20px_rgba(16,185,129,0.3)]'}`}>
         <Save className="w-4 h-4" />
@@ -729,12 +872,12 @@ function LoginScreen({ onLogin }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs text-slate-400 mb-1.5">Username</label>
-            <input type="text" required value={username} onChange={e=>setUsername(e.target.value)}
+            <input type="text" required value={username} onChange={e => setUsername(e.target.value)}
               className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hpe-green/50" />
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1.5">Password</label>
-            <input type="password" required value={password} onChange={e=>setPassword(e.target.value)}
+            <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
               className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hpe-green/50" />
           </div>
           {error && <div className="text-red-400 text-xs p-2 bg-red-400/10 rounded border border-red-400/20">{error}</div>}
@@ -752,7 +895,7 @@ function AdminDashboardPage({ token }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [newUser, setNewUser] = useState({ username:'', password: '', role: 'user' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user' });
 
   const fetchUsers = async () => {
     try {
@@ -779,13 +922,13 @@ function AdminDashboardPage({ token }) {
         const d = await res.json();
         throw new Error(d.detail || 'Error creating user');
       }
-      setNewUser({ username:'', password:'', role:'user' });
+      setNewUser({ username: '', password: '', role: 'user' });
       fetchUsers();
     } catch (err) { alert(err.message); }
   };
 
   const handleDelete = async (username) => {
-    if(!window.confirm(`Delete ${username}?`)) return;
+    if (!window.confirm(`Delete ${username}?`)) return;
     try {
       const res = await fetch(`http://localhost:8000/api/v1/auth/users/${username}`, {
         method: 'DELETE',
@@ -793,12 +936,12 @@ function AdminDashboardPage({ token }) {
       });
       if (!res.ok) throw new Error('Error deleting user');
       fetchUsers();
-    } catch(err) { alert(err.message); }
+    } catch (err) { alert(err.message); }
   };
 
   const handleChangePassword = async (username) => {
     const pw = window.prompt(`New password for ${username}:`);
-    if(!pw) return;
+    if (!pw) return;
     try {
       const res = await fetch(`http://localhost:8000/api/v1/auth/users/${username}/password`, {
         method: 'PUT',
@@ -807,7 +950,7 @@ function AdminDashboardPage({ token }) {
       });
       if (!res.ok) throw new Error('Error updating password');
       alert('Password updated');
-    } catch(err) { alert(err.message); }
+    } catch (err) { alert(err.message); }
   };
 
   return (
@@ -822,15 +965,15 @@ function AdminDashboardPage({ token }) {
           <form onSubmit={handleCreate} className="space-y-3">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Username</label>
-              <input type="text" required value={newUser.username} onChange={e=>setNewUser({...newUser, username: e.target.value})} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white" />
+              <input type="text" required value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white" />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Password</label>
-              <input type="password" required value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white" />
+              <input type="password" required value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white" />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Role</label>
-              <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white">
+              <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })} className="w-full bg-hpe-bg border border-hpe-border rounded-lg px-3 py-2 text-sm text-white">
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
@@ -851,8 +994,8 @@ function AdminDashboardPage({ token }) {
                       <td className="py-3 font-medium text-white">{u.username}</td>
                       <td className="py-3"><span className="px-2 py-1 rounded bg-slate-800 text-xs">{u.role}</span></td>
                       <td className="py-3 text-right space-x-2">
-                        <button onClick={()=>handleChangePassword(u.username)} className="text-xs text-blue-400 hover:text-blue-300">Reset PW</button>
-                        {u.username !== 'admin' && <button onClick={()=>handleDelete(u.username)} className="text-xs text-red-400 hover:text-red-300">Delete</button>}
+                        <button onClick={() => handleChangePassword(u.username)} className="text-xs text-blue-400 hover:text-blue-300">Reset PW</button>
+                        {u.username !== 'admin' && <button onClick={() => handleDelete(u.username)} className="text-xs text-red-400 hover:text-red-300">Delete</button>}
                       </td>
                     </tr>
                   ))}
@@ -890,19 +1033,23 @@ export default function App() {
   });
 
   const [formData, setFormData] = useState({
-    company_name:'', company_url:'', industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears
+    company_name: '', company_url: '', industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears
   });
+
+  // ── Mejora 6: Pipeline tracker state ──────────────────────
+  const initialPipelineSteps = { scraping: 'pending', rag: 'pending', agents: 'pending', auditor: 'pending', scoring: 'pending' };
+  const [pipelineSteps, setPipelineSteps] = useState(initialPipelineSteps);
 
   // Sync form defaults when prefs change
   useEffect(() => {
     setFormData(prev => ({ ...prev, industry: prefs.defaultIndustry, years_inactive: prefs.defaultYears }));
   }, [prefs.defaultIndustry, prefs.defaultYears]);
 
-  const [loading,    setLoading]    = useState(false);
-  const [result,     setResult]     = useState(null);
-  const [error,      setError]      = useState('');
-  const [activeTab,  setActiveTab]  = useState('overview');
-  const [history,    setHistory]    = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [history, setHistory] = useState([]);
   const [activePage, setActivePage] = useState('dashboard');
 
   const handleInputChange = (e) => {
@@ -910,13 +1057,24 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // ── Mejora 8B: Ctrl+Enter keyboard shortcut ────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !loading) {
+        document.getElementById('btn-execute')?.closest('form')?.requestSubmit();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [loading]);
+
   const handleAnalyze = async (e) => {
     e.preventDefault();
 
     // 🏆 EASTER EGG (Opción 1: Búsqueda Secreta)
     const searchTarget = formData.company_name.toLowerCase();
     const isEasterEgg = ['zuany', 'quiroz', 'herrera', 'reyes'].every(name => searchTarget.includes(name));
-    
+
     if (isEasterEgg) {
       setLoading(true); setError(''); setResult(null); setActiveTab('overview');
       // Simulamos un retraso como si los agentes estuvieran operando...
@@ -960,32 +1118,54 @@ export default function App() {
     abortControllerRef.current = controller;
 
     setLoading(true); setError(''); setResult(null); setActiveTab('overview');
+    // Reset + start pipeline steps
+    setPipelineSteps({ scraping: 'active', rag: 'pending', agents: 'pending', auditor: 'pending', scoring: 'pending' });
+
+    // Simulate step progression (backend is single-shot, no SSE on main endpoint)
+    const stepTimers = [
+      setTimeout(() => setPipelineSteps(s => ({ ...s, scraping: 'done', rag: 'active' })), 4000),
+      setTimeout(() => setPipelineSteps(s => ({ ...s, rag: 'done', agents: 'active' })), 8000),
+      setTimeout(() => setPipelineSteps(s => ({ ...s, agents: 'done', auditor: 'active' })), 12000),
+      setTimeout(() => setPipelineSteps(s => ({ ...s, auditor: 'done', scoring: 'active' })), 16000),
+    ];
+
     try {
       const res = await fetch('http://localhost:8000/api/v1/analyze', {
         method: 'POST',
         signal: controller.signal,
-        headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${auth?.access_token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth?.access_token}` },
         body: JSON.stringify({
           ...formData,
           years_inactive: parseInt(formData.years_inactive, 10),
           report_language: prefs.reportLang === 'Spanish' ? 'es' : 'en'
         })
       });
+      stepTimers.forEach(clearTimeout);
       if (!res.ok) {
         const errData = await res.json();
+        setPipelineSteps(s => ({ ...s, scraping: 'error' }));
         throw new Error(errData.detail?.[0]?.msg || errData.detail || 'Server error.');
       }
       const data = await res.json();
-      setResult(data);
+      setPipelineSteps({ scraping: 'done', rag: 'done', agents: 'done', auditor: 'done', scoring: 'done' });
+      // Attach metadata for Improvement 7 (score factors) and 8C (freshness)
+      const enrichedData = {
+        ...data,
+        _scoreFactors: data.score_factors || null,
+        _timestamp: Date.now(),
+      };
+      setResult(enrichedData);
       setHistory(prev => [{
         company: data.company_name, industry: formData.industry,
         score: data.lead_score, priority: data.priority,
         status: 'Completed', timestamp: new Date().toLocaleTimeString(),
-        fullData: data, fullFormData: formData
+        fullData: enrichedData, fullFormData: { ...formData }
       }, ...prev.slice(0, 9)]);
     } catch (err) {
+      stepTimers.forEach(clearTimeout);
       if (err.name === 'AbortError') {
         setError('Analysis cancelled.');
+        setPipelineSteps(initialPipelineSteps);
       } else {
         setError(err.message);
       }
@@ -1014,6 +1194,23 @@ export default function App() {
     }
   };
 
+  // ── Mejora 8A: Re-analyze (pre-fill form + auto-submit) ────
+  const handleReanalyze = useCallback((index) => {
+    const item = history[index];
+    if (!item) return;
+    setFormData({ ...item.fullFormData });
+    setActivePage('dashboard');
+    // Use a small delay to let the form state settle before faking submit
+    setTimeout(() => {
+      document.getElementById('btn-execute')?.closest('form')?.requestSubmit();
+    }, 100);
+  }, [history]);
+
+  // ── Mejora 8C: Refresh current result ─────────────────────
+  const handleReanalyzeCurrentResult = useCallback(() => {
+    document.getElementById('btn-execute')?.closest('form')?.requestSubmit();
+  }, []);
+
   const handleExportPDF = async () => {
     if (!result) return;
     setIsExporting(true);
@@ -1023,7 +1220,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(result)
       });
-      
+
       if (!res.ok) {
         throw new Error('Error generating PDF on server');
       }
@@ -1036,7 +1233,7 @@ export default function App() {
       link.setAttribute('download', `KORHEX_${result.company_name.replace(/[^a-z0-9]/gi, '_').toUpperCase()}_Report.pdf`);
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -1050,11 +1247,11 @@ export default function App() {
   };
 
   const NAV = [
-    { id:'dashboard', label:'Dashboard',         icon:LayoutDashboard },
-    { id:'nueva',     label:'New Investigation', icon:Search          },
-    { id:'historial', label:'History',           icon:History         },
-    { id:'config',    label:'Preferences',        icon:Settings        },
-    ...(auth?.role === 'admin' ? [{ id:'admin', label:'Admin Panel', icon:Users }] : [])
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'nueva', label: 'New Investigation', icon: Search },
+    { id: 'historial', label: 'History', icon: History },
+    { id: 'config', label: 'Preferences', icon: Settings },
+    ...(auth?.role === 'admin' ? [{ id: 'admin', label: 'Admin Panel', icon: Users }] : [])
   ];
 
   const handleLogin = (data) => {
@@ -1132,6 +1329,7 @@ export default function App() {
               result={result} activeTab={activeTab} setActiveTab={setActiveTab}
               history={history} onDelete={handleDeleteHistory} onView={handleViewReport} prefs={prefs}
               resultsRef={resultsRef} onExport={handleExportPDF} isExporting={isExporting}
+              pipelineSteps={pipelineSteps} onReanalyze={handleReanalyzeCurrentResult}
             />
           )}
           {activePage === 'nueva' && (
@@ -1140,11 +1338,12 @@ export default function App() {
               onSubmit={handleAnalyze} onCancel={handleCancel} loading={loading} error={error}
               result={result} activeTab={activeTab} setActiveTab={setActiveTab}
               resultsRef={resultsRef} onExport={handleExportPDF} isExporting={isExporting}
+              pipelineSteps={pipelineSteps} onReanalyze={handleReanalyzeCurrentResult}
             />
           )}
           {activePage === 'historial' && <HistoryPage history={history} onDelete={handleDeleteHistory} onView={handleViewReport} />}
-          {activePage === 'config'    && <UserPreferencesPage prefs={prefs} onSave={setPrefs} />}
-          {activePage === 'admin'     && auth?.role === 'admin' && <AdminDashboardPage token={auth.access_token} />}
+          {activePage === 'config' && <UserPreferencesPage prefs={prefs} onSave={setPrefs} />}
+          {activePage === 'admin' && auth?.role === 'admin' && <AdminDashboardPage token={auth.access_token} />}
         </div>
       </div>
     </div>

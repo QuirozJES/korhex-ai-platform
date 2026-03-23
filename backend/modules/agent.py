@@ -1,86 +1,147 @@
-import ollama, json
+"""
+backend/modules/agent.py — OOP Patterns para KORHEX.AI
 
-RESEARCHER_PROMPT = '''You are a senior B2B Account Intelligence Analyst.
-Analyze enterprise accounts using ONLY the provided data.
-Structure your output in exactly 6 labeled sections.
-Never fabricate data. If information is unavailable, state: Insufficient public data.
-Always write in English.'''
+PATTERN A: Strategy Pattern → BaseScraper / DuckDuckGoScraper / AccountIntelligenceEngine
+PATTERN B: Singleton       → OllamaClient (LLM se instancia UNA sola vez)
+PATTERN C: Result Dataclass → AnalysisResult
+"""
+from __future__ import annotations
 
-SALES_WRITER_PROMPT = '''You are an elite Enterprise Sales Strategist.
-Your speeches have exactly 4 components:
-1) Opening with a verified data point from research
-2) Challenge statement based on detected pain points
-3) Solution bridge connecting challenge to specific products with ROI
-4) Clear call to action with specific next step
-MINIMUM 120 WORDS - this is mandatory.
-Reference at least 2 specific data points from the research.
-Write exclusively in English. Consultative tone, never pushy.'''
+import asyncio
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any
 
-def generate_analysis(company_name: str, web_data: dict, products: list, years_inactive: int) -> dict:
-    context = f'''
-    COMPANY: {company_name}
-    URL: {web_data.get('company_url', 'N/A')}
-    INDUSTRY: {web_data.get('industry')}
-    YEARS INACTIVE: {years_inactive}
-    STRATEGY: {json.dumps([i.get('snippet','') for i in web_data.get('strategy_background',[])])}
-    TECH ENV: {json.dumps([i.get('snippet','') for i in web_data.get('tech_environment',[])])}
-    PAIN POINTS: {json.dumps([i.get('snippet','') for i in web_data.get('pain_points',[])])}
-    DECISION MAKERS: {json.dumps([i.get('snippet','') for i in web_data.get('decision_makers',[])])}
-    FINANCIALS: {json.dumps([i.get('snippet','') for i in web_data.get('financial_signals',[])])}
-    COMPETITIVE: {json.dumps([i.get('snippet','') for i in web_data.get('competitive_context',[])])}
-    PRODUCTS: {json.dumps([p['name']+': '+p['roi_pitch'] for p in products])}
-    '''
+# ─── PATTERN C — AnalysisResult Dataclass ────────────────────
+@dataclass
+class AnalysisResult:
+    company_name:  str
+    lead_score:    int
+    priority:      str
+    research:      str
+    sales_speech:  str
+    audit_passed:  bool
+    data_quality:  str
+    processing_ms: int
+    products:      list[dict] = field(default_factory=list)
+    sources:       list[str]  = field(default_factory=list)
+    word_count:    int        = 0
+    audit_notes:   str        = ""
 
-    research_prompt = context + '''
-    Generate a structured account analysis with EXACTLY these 6 labeled sections:
-    ## 1. COMPANY SNAPSHOT & STRATEGY
-    ## 2. TECHNOLOGY ENVIRONMENT
-    ## 3. IT PAIN POINTS
-    ## 4. KEY DECISION MAKERS
-    ## 5. FINANCIAL SIGNALS
-    ## 6. COMPETITIVE CONTEXT
-    Base everything strictly on the provided data. Never invent facts.
-    '''
+    @property
+    def is_high_priority(self) -> bool:
+        """True si el lead score supera o iguala 70."""
+        return self.lead_score >= 70
 
-    try:
-        res = ollama.chat(model='llama3',
-            messages=[{'role':'system','content':RESEARCHER_PROMPT},{'role':'user','content':research_prompt}],
-            options={'temperature':0.3})
-        research = res['message']['content']
-    except Exception as e:
-        research = f'Analysis error: {e}. Verify Ollama is running with: ollama serve'
+    @property
+    def summary(self) -> str:
+        """Resumen de una línea para logging / UI."""
+        return f"{self.company_name} — {self.lead_score}/100 ({self.priority})"
 
-    products_str = chr(10).join([f"- {p['name']}: {p['description']} | ROI: {p['roi_pitch']}" for p in products])
-    net_new = f'NET NEW LOGO: no purchase in {years_inactive} years.' if years_inactive >= 3 else f'Re-engagement: {years_inactive} years since last purchase.'
 
-    speech_prompt = f'''{net_new}
-    Account Research: {research}
-    Available Solutions: {products_str}
-    Write a personalized sales speech for {company_name}.
-    MANDATORY STRUCTURE:
-    [COMPONENT 1 - OPENING WITH VERIFIED DATA]
-    [COMPONENT 2 - CHALLENGE STATEMENT]
-    [COMPONENT 3 - SOLUTION BRIDGE WITH ROI]
-    [COMPONENT 4 - CALL TO ACTION]
-    Requirements: minimum 120 words, reference 2+ data points, English only.'''
+# ─── PATTERN A — Strategy Pattern: BaseScraper ───────────────
 
-    try:
-        res2 = ollama.chat(model='llama3',
-            messages=[{'role':'system','content':SALES_WRITER_PROMPT},{'role':'user','content':speech_prompt}],
-            options={'temperature':0.7})
-        speech = res2['message']['content']
-    except Exception as e:
-        speech = f'Speech generation error: {e}'
+class BaseScraper(ABC):
+    """Interfaz abstracta para scrapers de inteligencia de cuentas."""
 
-    word_count = len(speech.split())
-    if word_count < 120:
+    @abstractmethod
+    async def search(self, query: str, max_results: int = 5) -> list[dict]:
+        """Executes a single search and returns normalized result items."""
+        ...
+
+    @abstractmethod
+    def search_account(
+        self,
+        company_name: str,
+        company_url: str = "",
+        industry: str = "Technology",
+    ) -> dict:
+        """Full account intelligence pipeline. Returns the structured web_data dict."""
+        ...
+
+
+class DuckDuckGoScraper(BaseScraper):
+    """
+    Implementación concreta de BaseScraper usando DuckDuckGo.
+    Delega al módulo scraper.py existente para mantener DRY.
+    """
+
+    async def search(self, query: str, max_results: int = 5) -> list[dict]:
+        from modules.scraper import _fetch_with_timeout
+        return await _fetch_with_timeout(query, max_results, timeout=10.0)
+
+    def search_account(
+        self,
+        company_name: str,
+        company_url: str = "",
+        industry: str = "Technology",
+    ) -> dict:
+        from modules.scraper import search_account
+        return search_account(company_name, company_url, industry)
+
+
+class AccountIntelligenceEngine:
+    """
+    Motor principal que recibe un BaseScraper via dependency injection.
+    Permite intercambiar el scraper sin tocar el código de agentes.
+    """
+
+    def __init__(self, scraper: BaseScraper):
+        self._scraper = scraper
+
+    def gather_intelligence(
+        self,
+        company_name: str,
+        company_url: str = "",
+        industry: str = "Technology",
+    ) -> dict:
+        """Delega la recolección de inteligencia al scraper inyectado."""
+        return self._scraper.search_account(company_name, company_url, industry)
+
+    async def gather_intelligence_async(
+        self,
+        company_name: str,
+        company_url: str = "",
+        industry: str = "Technology",
+    ) -> dict:
+        """Versión async: corre gather_intelligence en thread pool."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, self._scraper.search_account, company_name, company_url, industry
+        )
+
+
+# ─── PATTERN B — Singleton: OllamaClient ─────────────────────
+
+class OllamaClient:
+    """
+    Singleton que mantiene una única instancia del LLM de Ollama.
+    El modelo se carga UNA SOLA VEZ en memoria; todas las peticiones reutilizan
+    la misma conexión evitando reloadings costosos.
+
+    Uso:
+        llm = OllamaClient().llm
+    """
+    _instance: OllamaClient | None = None
+    _llm: Any = None
+
+    def __new__(cls) -> OllamaClient:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._init_llm()
+        return cls._instance
+
+    def _init_llm(self) -> None:
         try:
-            res3 = ollama.chat(model='llama3',
-                messages=[{'role':'system','content':SALES_WRITER_PROMPT},
-                    {'role':'user','content':f'Expand this speech to at least 120 words: {speech}'}])
-            speech = res3['message']['content']
-            word_count = len(speech.split())
-        except: pass
+            from crewai import LLM
+            self._llm = LLM(
+                model="ollama/llama3",
+                base_url="http://localhost:11434"
+            )
+        except Exception as e:
+            self._llm = None
+            print(f"[OllamaClient] Warning: could not initialize LLM — {e}")
 
-    return {'research_analysis': research, 'sales_speech': speech,
-            'word_count': word_count, 'products_recommended': products}
+    @property
+    def llm(self) -> Any:
+        return self._llm
