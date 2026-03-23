@@ -3,14 +3,14 @@ import time
 import random
 import asyncio
 import urllib.parse
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from dotenv import load_dotenv
 from datetime import datetime
 
 load_dotenv()
 
 # ─── CONFIGURACIÓN DE PROXY CORPORATIVO ──────────────────────
-_PROXY = os.environ.get("CORP_PROXY_URL", None)
+_PROXY = os.environ.get("CORP_PROXY_URL", "").strip() or None
 
 _USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -84,18 +84,20 @@ def _fetch_and_filter(query: str, max_results: int, company_name: str, company_d
     return filtered
 
 def _sync_ddg_search(query: str, max_results: int, company_name: str, company_domain: str) -> list[dict]:
-    items = _fetch_and_filter(query, max_results * 4, company_name, company_domain)
+    items = _fetch_and_filter(query, max_results, company_name, company_domain)
+    
+    # Intento de fallback más rápido si es nulo
     if len(items) < max_results and company_name:
-        time.sleep(random.uniform(1.5, 3.0))
+        time.sleep(random.uniform(0.5, 1.0))
         extra_words = [w for w in query.split() if w.lower() not in [cn.lower() for cn in company_name.split()]]
         simple_query = f'{company_name} {" ".join(extra_words[:3])}'
-        more = _fetch_and_filter(simple_query, max_results * 3, company_name, company_domain)
+        more = _fetch_and_filter(simple_query, max_results, company_name, company_domain)
         seen_urls = {i['url'] for i in items}
         for m in more:
             if m['url'] not in seen_urls:
                 items.append(m)
                 seen_urls.add(m['url'])
-    time.sleep(random.uniform(2.5, 5.0))
+                
     return items[:max_results]
 
 # ─── ASYNC SEARCH ─────────────────────────────────────────────
@@ -103,7 +105,7 @@ def _sync_ddg_search(query: str, max_results: int, company_name: str, company_do
 async def _async_ddg_search(query: str, max_results: int, company_name: str, company_domain: str) -> list[dict]:
     loop = asyncio.get_running_loop()
     def _blocking_search():
-        time.sleep(random.uniform(0.5, 3.5))
+        time.sleep(random.uniform(0.1, 1.5)) # Small stagger
         return _sync_ddg_search(query, max_results, company_name, company_domain)
     
     return await loop.run_in_executor(None, _blocking_search)

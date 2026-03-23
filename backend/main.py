@@ -45,19 +45,9 @@ app.add_middleware(
 # ── 2. JWT Authentication ────────────────────────────────────────────────────────
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 
-# ── 3. Endpoint principal ──────────────────────────────────────────────────
-@app.post("/api/v1/analyze", response_model=AnalysisResponse)
-async def analyze_account(
-    request: AnalysisRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Pipeline completo (equivalente a las 5 páginas de Streamlit):
-    1. Scraping vía DuckDuckGo (proxy corporativo)
-    2. RAG: Semantic Matching con portafolio de productos
-    3. Dual-Agent CrewAI sobre Llama 3 local (Ollama)
-    4. Lead Scoring
-    """
+# ── 3. Helpers ───────────────────────────────────────────────────────────────
+def _get_ollama_status() -> dict:
+    """Consulta el estado de Ollama sin bloquear el proceso si falla."""
     try:
         r = _requests.get("http://localhost:11434/api/tags", timeout=3)
         models = [m.get("name", "") for m in r.json().get("models", [])]
