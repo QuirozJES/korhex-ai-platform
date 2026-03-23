@@ -35,12 +35,24 @@ def _ddg_search(query: str, max_results: int = 5) -> list[dict]:
     con la misma estructura que antes entregaba Tavily.
     """
     client = _ddgs_client()
-    raw = client.text(query, max_results=max_results)
+    raw = client.text(query, max_results=max_results, region='wt-wt')
 
     items = []
+    
+    # Dominios irrelevantes a ignorar por defecto
+    blacklist = [
+        "calculator", "translate.google", "facebook.com", "instagram.com", 
+        "twitter.com", "x.com", "tiktok.com", "youtube.com", "pinterest.com"
+    ]
+
     for r in (raw or []):
         url  = r.get("href", "")
         domain = url.split("/")[2] if url and "/" in url else url
+        
+        # Ignorar si el dominio coincide con algo de la blacklist
+        if any(bad_domain in domain.lower() for bad_domain in blacklist):
+            continue
+
         items.append({
             "title":            r.get("title", ""),
             "snippet":          r.get("body", "")[:400],
@@ -52,8 +64,8 @@ def _ddg_search(query: str, max_results: int = 5) -> list[dict]:
             "mentions_company": None,
         })
 
-    # Pausa aleatoria entre peticiones para evitar rate-limiting
-    time.sleep(random.uniform(1.5, 3.5))
+    # Pausa aleatoria aumentada entre peticiones para evitar rate-limiting
+    time.sleep(random.uniform(2.5, 5.0))
     return items
 
 # ─── VALIDADOR DE DATOS ───────────────────────────────────
