@@ -60,18 +60,9 @@ def _get_ollama_status() -> dict:
 
 
 def _build_response(
-    company_name, industry, score, analysis, web_data, products, raw_products, years_inactive
+    company_name, industry, score, analysis, web_data, product_objs, years_inactive
 ) -> AnalysisResponse:
     """Construye la AnalysisResponse a partir de los artefactos del pipeline."""
-    product_objs = [
-        ProductRecommendation(
-            name=p.get("name", ""),
-            description=p.get("description", ""),
-            roi_pitch=p.get("roi_pitch", ""),
-            pain_solved=p.get("pain_solved", ""),
-        )
-        for p in (products if products else raw_products)
-    ]
     recent_news = [
         NewsItem(
             title=n.get("title", ""),
@@ -188,7 +179,7 @@ async def analyze_account(
         )
 
         return _build_response(
-            company_name, industry, score, analysis, web_data, product_objs, raw_products, years_inactive
+            company_name, industry, score, analysis, web_data, product_objs, years_inactive
         )
 
     except Exception as e:
@@ -341,3 +332,5 @@ async def health_check():
             "db_path":     "backend/korhex.db"
         }
     }
+
+

@@ -403,17 +403,18 @@ function InvestigationForm({ formData, onChange, onSubmit, onCancel, loading, er
 
       {/* Submit + Cancel */}
       <div className={`grid gap-2 ${loading ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        <div className="relative">
-          <button id="btn-execute" type="submit" disabled={loading}
-            className="w-full bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
-            {loading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
-              : <><Search className="w-4 h-4" /><span>Execute Intelligence Agents</span></>}
-          </button>
-          {!loading && (
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-700 text-xs font-mono pointer-events-none">Ctrl+↵</span>
+        <button id="btn-execute" type="submit" disabled={loading}
+          className="w-full bg-hpe-green hover:bg-hpe-green-hover disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+          {loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /><span>Analyzing...</span></>
+          ) : (
+            <>
+              <Search className="w-4 h-4" />
+              <span>Execute Intelligence Agents</span>
+              <span className="ml-3 text-[10px] font-mono opacity-40 hidden sm:inline">Ctrl+Enter</span>
+            </>
           )}
-        </div>
+        </button>
         {loading && (
           <button type="button" onClick={onCancel}
             className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-bold py-2.5 rounded-lg text-sm transition-all flex items-center justify-center space-x-2">

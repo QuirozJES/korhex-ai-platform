@@ -65,19 +65,19 @@ async def _async_ddg_search(query: str, max_results: int = 5) -> list[dict]:
     Versión async de la búsqueda DDG.
     Corre el bloqueo de red en un thread pool para no bloquear el event loop.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     def _blocking_search():
+        # Delay aleatorio ANTES de la petición para evitar que las 6 lleguen al mismo milisegundo a DDG
+        time.sleep(random.uniform(0.5, 3.5))
         client = _ddgs_client()
         raw = client.text(query, max_results=max_results, region='wt-wt')
-        # Pausa aleatoria aumentada entre peticiones para evitar rate-limiting
-        time.sleep(random.uniform(2.5, 5.0))
         return raw
 
     raw = await loop.run_in_executor(None, _blocking_search)
     return _normalize_results(raw)
 
-async def _fetch_with_timeout(query: str, max_results: int = 5, timeout: float = 10.0) -> list[dict]:
+async def _fetch_with_timeout(query: str, max_results: int = 5, timeout: float = 15.0) -> list[dict]:
     """
     Ejecuta _async_ddg_search con timeout. Si timeout ocurre, retorna lista vacía.
     Target: reduce total scraping time from ~30s to ~8s.
@@ -85,8 +85,12 @@ async def _fetch_with_timeout(query: str, max_results: int = 5, timeout: float =
     try:
         return await asyncio.wait_for(_async_ddg_search(query, max_results), timeout=timeout)
     except asyncio.TimeoutError:
+        print(f"[Scraper] TIMEOUT for query: {query}")
         return []
-    except Exception:
+    except Exception as e:
+        print(f"[Scraper] ERROR for query: {query} -> {str(e)}")
+        import traceback
+        traceback.print_exc()
         return []
 
 async def _async_search_account(company_name: str, company_url: str = '', industry: str = 'Technology') -> dict:
@@ -114,12 +118,12 @@ async def _async_search_account(company_name: str, company_url: str = '', indust
     }
 
     queries = [
-        ('strategy_background', f'{company_name} corporate strategy business expansion 2024 2025', 5),
-        ('tech_environment',    f'{company_name} IT infrastructure technology stack cloud servers', 5),
-        ('pain_points',         f'{company_name} IT challenges technology problems legacy infrastructure', 5),
-        ('decision_makers',     f'{company_name} CTO CIO CEO CFO VP technology executives 2024 2025', 5),
-        ('financial_signals',   f'{company_name} revenue earnings financial results investment 2024', 5),
-        ('competitive_context', f'{company_name} competitors market position industry ranking', 5),
+        ('strategy_background', f'"{company_name}" corporate strategy business expansion 2024 2025', 5),
+        ('tech_environment',    f'"{company_name}" IT infrastructure technology stack cloud servers', 5),
+        ('pain_points',         f'"{company_name}" IT challenges technology problems legacy infrastructure', 5),
+        ('decision_makers',     f'"{company_name}" CTO CIO CEO CFO VP technology executives 2024 2025', 5),
+        ('financial_signals',   f'"{company_name}" revenue earnings financial results investment 2024', 5),
+        ('competitive_context', f'"{company_name}" competitors market position industry ranking', 5),
     ]
 
     # ── Búsquedas principales en PARALELO ──
@@ -134,15 +138,20 @@ async def _async_search_account(company_name: str, company_url: str = '', indust
 
     # ── Noticias recientes (paralelo implícito vía gather en un solo item) ──
     news_items = await _fetch_with_timeout(
-        f'{company_name} news announcement 2024 2025', 3, 10.0
+        f'"{company_name}" news announcement 2024', 3, 10.0
     )
+    
+    company_words = [w.lower() for w in company_name.split() if w.strip()]
     for r in news_items:
-        results['recent_news'].append({
-            'title':   r['title'],
-            'snippet': r['snippet'][:300],
-            'url':     r['url'],
-            'source':  r['source'],
-        })
+        # Validación sencilla: solo la noticia entra si menciona el nombre (evita autocorrect fails)
+        combined_text = (r['title'] + " " + r['snippet']).lower()
+        if any(w in combined_text for w in company_words):
+            results['recent_news'].append({
+                'title':   r['title'],
+                'snippet': r['snippet'][:300],
+                'url':     r['url'],
+                'source':  r['source'],
+            })
 
     # ── Validación cruzada ──
     validation = cross_validate(results, company_name)
