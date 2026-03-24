@@ -12,7 +12,7 @@
 [![Llama 3](https://img.shields.io/badge/Llama_3-Local_LLM-7C3AED?style=flat-square&logo=meta&logoColor=white)](https://ollama.com)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
 
-**Zero Data Leakage · 100% Local AI · Enterprise-Grade**
+**Zero Data Leakage · 100% Local AI · Obsidian v2 Design · Enterprise-Grade**
 
 </div>
 
@@ -60,6 +60,14 @@ KORHEX.AI is built on a modern, fully decoupled, async-first stack:
 ┌─────────────────────────────────┐
 │  Ollama — Llama 3 (local)       │  ← All LLM inference runs here.
 │  CrewAI Multi-Agent Orchestration│   No OpenAI. No Anthropic. No cloud.
+└────────────────┬────────────────┘
+                 │ SQLite (via database.py)
+                 │ JWT Auth (via auth.py)
+                 │ OOP Patterns (via agent.py)
+                 ▼
+┌─────────────────────────────────┐
+│  Cloud Persistence & Sync       │  ← Per-user configurations and
+│  (Auth + DB Storage)            │    preferences synced cross-device.
 └─────────────────────────────────┘
 ```
 
@@ -153,11 +161,14 @@ korhex-ai-platform/
 ├── backend/
 │   ├── main.py                 # FastAPI app + async pipeline orchestration
 │   ├── models/schemas.py       # Pydantic V2 request/response contracts
+│   ├── korhex.db               # Scraper & Analysis cache
+│   ├── users.db                # User credentials & Cloud preferences
 │   └── modules/
 │       ├── scraper.py          # Async parallel DuckDuckGo scraper
 │       ├── agents.py           # CrewAI dual-agent pipeline (Llama 3)
 │       ├── agent.py            # OOP patterns: Strategy, Singleton, Dataclass
 │       ├── database.py         # SQLite cache layer (WAL mode, 24h TTL)
+│       ├── auth.py             # JWT Authentication & User Management
 │       ├── rag.py              # Product portfolio matching engine
 │       └── pdf_report.py       # ReportLab PDF generation
 ├── frontend/

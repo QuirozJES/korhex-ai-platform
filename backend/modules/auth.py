@@ -31,8 +31,13 @@ def init_db():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
-                    role TEXT NOT NULL
+                    role TEXT NOT NULL,
+                    preferences TEXT
                 )''')
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN preferences TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
     conn.commit()
     
     # Check if admin exists
@@ -60,6 +65,7 @@ class Token(BaseModel):
     token_type: str
     role: str
     username: str
+    preferences: str | None = None
 
 class UserCreate(BaseModel):
     username: str
@@ -104,7 +110,7 @@ async def get_current_admin(current_user: dict = Depends(get_current_user)):
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT username, password_hash, role FROM users WHERE username = ?", (form_data.username,))
+    c.execute("SELECT username, password_hash, role, preferences FROM users WHERE username = ?", (form_data.username,))
     user = c.fetchone()
     conn.close()
     
@@ -119,7 +125,26 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": user[0], "role": user[2]}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "role": user[2], "username": user[0]}
+    return {"access_token": access_token, "token_type": "bearer", "role": user[2], "username": user[0], "preferences": user[3]}
+
+@router.get("/me/prefs")
+async def get_my_prefs(current_user: dict = Depends(get_current_user)):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT preferences FROM users WHERE username = ?", (current_user["user"],))
+    prefs = c.fetchone()[0]
+    conn.close()
+    return {"preferences": prefs}
+
+@router.post("/me/prefs")
+async def save_my_prefs(data: dict, current_user: dict = Depends(get_current_user)):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    prefs_json = data.get("preferences")
+    c.execute("UPDATE users SET preferences = ? WHERE username = ?", (prefs_json, current_user["user"]))
+    conn.commit()
+    conn.close()
+    return {"message": "Preferences saved"}
 
 @router.get("/users")
 async def get_users(current_admin: dict = Depends(get_current_admin)):

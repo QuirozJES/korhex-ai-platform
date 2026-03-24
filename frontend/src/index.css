@@ -13,14 +13,14 @@ body {
   width: 4px;
 }
 .custom-scroll::-webkit-scrollbar-track {
-  background: #080f18;
+  background: #0c0d0f;
 }
 .custom-scroll::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #1f2022;
   border-radius: 4px;
 }
 .custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #10b981;
+  background: #01A982;
 }
 
 /* --- New Animations --- */
@@ -98,8 +98,8 @@ body {
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
-  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 15px rgba(1, 169, 130, 0.25);
+  border-color: rgba(1, 169, 130, 0.4);
 }
 
 .card-transition {
@@ -108,5 +108,5 @@ body {
 
 .card-transition:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 15px rgba(1, 169, 130, 0.05);
 }

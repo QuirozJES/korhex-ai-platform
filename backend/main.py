@@ -155,7 +155,8 @@ async def analyze_account(
                 None,
                 run_dual_agent_analysis,
                 company_name, web_data, raw_products,
-                years_inactive, "ACTIVE", request.report_language
+                years_inactive, "ACTIVE", request.report_language,
+                request.ai_temperature, request.stealth_mode
             )
             save_analysis(
                 company_name, company_url, industry, years_inactive,

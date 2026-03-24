@@ -12,6 +12,8 @@ class AnalysisRequest(BaseModel):
     years_inactive: int = Field(default=0, ge=0, le=20)
     report_language: Literal['en', 'es'] = 'en'
     analysis_depth: Literal['quick', 'standard', 'deep'] = 'standard'
+    ai_temperature: float = Field(default=0.7, ge=0, le=1)
+    stealth_mode: bool = False
 
     # Mapa de profundidad → número de resultados de búsqueda
     @property

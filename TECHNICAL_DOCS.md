@@ -1,6 +1,6 @@
 # KORHEX.AI — Documentación Técnica
 
-> Versión 3.0 · Rama: `feature/platform-v3-enhancements`
+> Versión 3.5 · Rama: `feature/obsidian-v2-sync`
 
 Esta documentación explica en detalle cómo funciona la plataforma por dentro: su arquitectura, los módulos del backend, los patrones de diseño utilizados, el contrato de la API y todas las mejoras introducidas en la versión 3.
 
@@ -16,7 +16,8 @@ Esta documentación explica en detalle cómo funciona la plataforma por dentro: 
 6. [Sistema de Caché SQLite](#6-sistema-de-caché-sqlite)
 7. [Scraper Asíncrono Paralelo](#7-scraper-asíncrono-paralelo)
 8. [Arquitectura del Frontend](#8-arquitectura-del-frontend)
-9. [Resumen de Mejoras v3](#9-resumen-de-mejoras-v3)
+9. [Autenticación y Sincronización Cloud](#9-autenticación-y-sincronización-cloud)
+10. [Resumen de Mejoras v3.5](#10-resumen-de-mejoras-v35)
 
 ---
 
@@ -39,7 +40,8 @@ El sistema está dividido en dos capas principales que se comunican a través de
 │  2. rag.py      → Matching de productos  │
 │  3. agents.py   → Agentes CrewAI / Llama │
 │  4. database.py → Caché SQLite WAL       │
-│  5. agent.py    → Patrones OOP           │
+│  5. auth.py     → Autenticación JWT      │
+│  6. agent.py    → Patrones OOP           │
 └────────────────┬─────────────────────────┘
                  │ HTTP local
                  ▼
@@ -467,24 +469,32 @@ App (estado global)
 
 ---
 
-## 9. Resumen de Mejoras v3
+---
+
+## 9. Autenticación y Sincronización Cloud
+
+### Nueva Arquitectura de Seguridad
+La v3.5 introduce un sistema de autenticación basado en **JWT (JSON Web Tokens)** y una base de datos de usuarios dedicada (`users.db`).
+
+- **Sesiones Volátiles:** Por requerimiento de seguridad, el token de acceso se guarda únicamente en `sessionStorage`. Esto fuerza un re-login cada vez que se cierra el navegador.
+- **Persistencia de Configuración:** A diferencia del token, las preferencias (foto, temperatura de IA, modo stealth) se sincronizan con la nube (base de datos backend) para que el usuario mantenga su experiencia en cualquier dispositivo.
+
+### Endpoints de Usuario
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/v1/auth/token` | POST | Login y obtención de token |
+| `/api/v1/auth/me/prefs` | GET | Recupera preferencias del usuario actual |
+| `/api/v1/auth/me/prefs` | POST | Sincroniza preferencias locales con el servidor |
+
+---
+
+## 10. Resumen de Mejoras v3.5
 
 | # | Mejora | Archivos modificados |
 |---|--------|---------------------|
-| 1 | Scraper paralelo con `asyncio.gather()` y timeout de 10s por query | `scraper.py` |
-| 2 | FastAPI con `run_in_executor()` para no bloquear el event loop | `main.py` |
-| 2 | Endpoint `/analyze/stream` con SSE para streaming de tokens | `main.py` |
-| 2 | Endpoint `/health` con estado de Ollama y estadísticas de caché | `main.py` |
-| 3 | Función `get_cache_hit_rate()` para monitoreo | `database.py` |
-| 4 | Strategy Pattern: `BaseScraper` / `DuckDuckGoScraper` / `AccountIntelligenceEngine` | `agent.py` |
-| 4 | Singleton Pattern: `OllamaClient` — LLM se instancia una sola vez | `agent.py`, `agents.py` |
-| 4 | Dataclass `AnalysisResult` con propiedades `is_high_priority` y `summary` | `agent.py` |
-| 5 | Patrones de prompt injection ampliados (10 patrones vs 4 en v2) | `schemas.py` |
-| 5 | Protección SSRF en `company_url` (bloquea IPs privadas y localhost) | `schemas.py` |
-| 5 | Campo `analysis_depth` con tres niveles: `quick / standard / deep` | `schemas.py` |
-| 5 | Campo `report_language` cambiado a `Literal['en', 'es']` (tipo estricto) | `schemas.py` |
-| 6 | Tracker de pipeline en vivo con 5 pasos animados (pending → active → done) | `App.jsx` |
-| 7 | Score breakdown: 4 barras animadas por factor de puntuación | `App.jsx` |
-| 8a | Botones "Re-analyze" y "Copy Speech" en cada fila del historial | `App.jsx` |
-| 8b | Atajo de teclado `Ctrl+Enter` para ejecutar el análisis | `App.jsx` |
-| 8c | Indicador de frescura de datos: verde < 1h, amarillo < 24h, rojo > 24h | `App.jsx` |
+| 1 | **Diseño Obsidian v2** | `App.jsx`, `tailwind.config.js`, `index.css` |
+| 2 | **Calibración Neural** | Control dinámico de `temperature` en Llama 3 |
+| 3 | **Modo Stealth** | Inyección de reglas de anonimización en el prompt |
+| 4 | **Cloud Preference Sync** | Persistencia cruzada de configuraciones en `users.db` |
+| 5 | **Identidad Visual** | Soporte para URLs de foto de perfil personalizadas |
+| 6 | **High Density Toggle** | Transformación reactiva de la UI (3 columnas vs 1 columna) |

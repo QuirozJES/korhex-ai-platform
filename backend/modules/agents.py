@@ -9,7 +9,12 @@ def clean_text(text: str) -> str:
     text = re.sub(r'[^\x00-\x7F\u00C0-\u024F\u00A0-\u00FF\n\r\t ]', '', text)
     return text.strip()
 
-def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE", report_language="en"):
+def run_dual_agent_analysis(company_name, web_data, products, years_inactive, client_status="ACTIVE", report_language="en", ai_temperature=0.7, stealth_mode=False):
+    # If stealth mode, remove technical/budget telemetry references
+    if stealth_mode:
+        stealth_rule = "STEALTH RULE: Omit all specific mentions of internal budgets, technical version numbers, or employee names. Keep the report high-level and strategic."
+    else:
+        stealth_rule = ""
     # Language instruction injected into every prompt
     lang_name   = "Spanish" if report_language == "es" else "English"
     lang_rule   = f"CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in professional {lang_name}. DO NOT use any other language."
@@ -90,6 +95,7 @@ CRITICAL FORMATTING RULES:
     STRUCTURE: Use clear paragraphs and bullet points (*) for lists.
     TONE: Professional, concise, and focused on ROI.
     {lang_rule}
+    {stealth_rule}
 Failure to follow these formatting rules will break the user interface. Ensure the text is clean and ready to be displayed in a dashboard card."""
 
     # ── 4. Función helper Ollama ─────────────────────────
@@ -101,7 +107,7 @@ Failure to follow these formatting rules will break the user interface. Ensure t
                     "model": "llama3",
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"num_predict": 2048}   # evita truncamiento a mitad de oración
+                    "options": {"num_predict": 2048, "temperature": ai_temperature}   # evita truncamiento a mitad de oración
                 },
                 timeout=180
             )
